@@ -1,0 +1,44 @@
+{
+  "skill_name": "weekly-report-generator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我生成这周的周报",
+      "expected_output": "在项目根目录生成一份 weekly-report-2026W30.md 周报文件，包含本周提交记录、TODO变更、代码库TODO清单等结构化内容。如果本周无提交，报告中明确说明。",
+      "files": [],
+      "expectations": [
+        "生成了一个 .md 格式的 Markdown 文件",
+        "文件名包含周编号或日期范围",
+        "报告包含提交记录章节（即使本周无提交也会说明）",
+        "报告包含 TODO 变更或 TODO 清单章节",
+        "报告包含概览统计数据（提交次数、贡献者等）"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "生成上周的工作总结，看看代码库有什么变化",
+      "expected_output": "生成上一自然周的周报文件（如 weekly-report-2026W29.md），包含上周的提交记录和TODO变更情况。",
+      "files": [],
+      "expectations": [
+        "生成了一个 .md 格式的 Markdown 文件",
+        "报告针对的是上一自然周（而非本周）",
+        "报告包含提交记录章节",
+        "报告包含代码变更或 TODO 相关章节",
+        "输出文件保存在项目根目录或指定目录"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "总结一下最近的代码提交和待办事项，输出一个 markdown 文件",
+      "expected_output": "生成包含提交记录和TODO清单的 Markdown 文件，格式化的周报或类似的总结文档。",
+      "files": [],
+      "expectations": [
+        "生成了一个 .md 格式的 Markdown 文件",
+        "报告包含 Git 提交信息",
+        "报告包含 TODO 或待办事项信息",
+        "输出内容是结构化的（有标题、章节等）",
+        "文件可以直接用 Markdown 阅读器打开查看"
+      ]
+    }
+  ]
+}
