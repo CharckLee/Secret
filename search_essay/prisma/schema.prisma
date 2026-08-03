@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Literature {
+  id            Int      @id @default(autoincrement())
+  title         String
+  author        String?
+  abstract      String?
+  content       String?   // 全文
+  keywords      String?   // 逗号分隔
+  pdfPath       String?
+  journalSource String?
+  journalUrl    String?
+  aiAnalysis    String?   // JSON，缓存AI分析结果
+  aiOverview    String?   // AI 生成的中文概述，一次性生成后缓存
+  translatedContent String? // AI 翻译后的中文全文，一次性翻译后缓存
+  createTime    DateTime  @default(now())
+  updateTime    DateTime  @updatedAt
+  tags          Tag[]
+  notes         Note[]
+}
+
+model Note {
+  id           Int        @id @default(autoincrement())
+  content      String
+  createTime   DateTime   @default(now())
+  literature   Literature @relation(fields: [literatureId], references: [id], onDelete: Cascade)
+  literatureId Int
+}
+
+model Tag {
+  id         Int          @id @default(autoincrement())
+  name       String       @unique
+  color      String       @default("#0891b2")
+  literature Literature[]
+}

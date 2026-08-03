@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd d:\\\\\\\\Vibecoding\\\\\\\\search_essay)",
+      "Bash(gh pr *)",
+      "Bash(curl -sL \"https://api.github.com/repos/cli/cli/releases/latest\")"
+    ]
+  }
+}
