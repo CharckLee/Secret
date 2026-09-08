@@ -4,6 +4,15 @@ const H1 = /^(一|二|三|四|五|六|七|八|九|十)、/;
 const H2 = /^（[一二三四五六七八九十]+）/;
 const H3 = /^\d+\.\d+\s/;
 
+// 识别标题层级：1=一级 2=二级 3=三级 0=正文
+export function detectHeadingLevel(line: string): number {
+  const t = line.trim();
+  if (H1.test(t)) return 1;
+  if (H2.test(t)) return 2;
+  if (H3.test(t)) return 3;
+  return 0;
+}
+
 export function checkFormat(text: string): FormatIssue[] {
   const issues: FormatIssue[] = [];
   const lines = text.split('\n');

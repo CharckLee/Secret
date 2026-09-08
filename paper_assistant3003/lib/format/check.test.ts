@@ -1,5 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { checkFormat } from './check';
+import { checkFormat, detectHeadingLevel } from './check';
+
+describe('detectHeadingLevel', () => {
+  it('detects level-1 heading', () => {
+    expect(detectHeadingLevel('一、引言')).toBe(1);
+  });
+  it('detects level-2 heading', () => {
+    expect(detectHeadingLevel('（一）小节')).toBe(2);
+  });
+  it('detects level-3 heading', () => {
+    expect(detectHeadingLevel('1.1 内容')).toBe(3);
+  });
+  it('returns 0 for body text', () => {
+    expect(detectHeadingLevel('这是正文。')).toBe(0);
+  });
+});
 
 describe('checkFormat', () => {
   it('flags consecutive blank lines', () => {

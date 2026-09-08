@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Card } from '@/components/Card';
 import { BoundaryNotice } from '@/components/BoundaryNotice';
-import { buildUnits, compareUnits, embedTexts, lexicalOnlyPairs } from '@/lib/similarity/pipeline';
+import { buildUnits } from '@/lib/similarity/pipeline';
+import { mergePairs } from '@/lib/similarity/merge';
 import { mergeSegments } from '@/lib/similarity/segment';
 import type { MatchPair, Segment, SentenceUnit } from '@/lib/similarity/types';
 
@@ -20,19 +21,41 @@ export default function SimilarityPage() {
     setError('');
     try {
       const aUnits = buildUnits(text);
-      let pairs: MatchPair[];
-      try {
-        const aVecs = await embedTexts(aUnits.map((u) => u.text));
-        pairs = compareUnits(aUnits, aUnits, aVecs, aVecs, 50, true);
-      } catch (embedErr) {
-        setError(`语义模型不可用，已降级为字面匹配（仅识别逐字相似）：${embedErr}`);
-        pairs = lexicalOnlyPairs(aUnits);
+      if (aUnits.length === 0) {
+        setError('未识别到有效句子，请检查输入内容');
+        setSegments([]);
+        return;
       }
-      const segs = mergeSegments(pairs, threshold);
+
+      let semanticPairs: MatchPair[] = [];
+      try {
+        const resp = await fetch('/api/similarity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sentences: aUnits.map((u) => u.text) }),
+        });
+        const data = await resp.json();
+        if (resp.ok && Array.isArray(data.pairs)) {
+          semanticPairs = data.pairs.map((p: { a: number; b: number; score: number }) => ({
+            aIndex: p.a,
+            bIndex: p.b,
+            semantic: p.score,
+            lexical: 0,
+            score: p.score,
+          }));
+        } else if (!resp.ok) {
+          setError(`语义分析失败：${data.error ?? '未知错误'}`);
+        }
+      } catch (err) {
+        setError(`语义分析失败：${err}`);
+      }
+
+      // 不同分块可能重复返回同一对，用 merge 去重后聚合展示
+      const merged = mergePairs(semanticPairs);
+      const segs = mergeSegments(merged, threshold);
+
       setUnits(aUnits);
       setSegments(segs);
-    } catch (err) {
-      setError(`比对失败：${err}`);
     } finally {
       setLoading(false);
     }
@@ -43,7 +66,7 @@ export default function SimilarityPage() {
       <h1 className="text-2xl font-bold">文稿语义相似片段自查</h1>
       <BoundaryNotice />
       <p className="text-xs text-gray-500">
-        当前版本支持单文档内部自查；多文档交叉比对将在后续版本提供。
+        通过 AI 语义分析识别文字不同、含义相近的片段；辅以字面匹配。当前版本支持单文档内部自查。
       </p>
 
       <Card>
@@ -73,10 +96,16 @@ export default function SimilarityPage() {
           disabled={loading || !text}
           className="mt-2 rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
         >
-          {loading ? '向量化中（首次需下载模型）…' : '开始比对'}
+          {loading ? 'AI 语义分析中…' : '开始比对'}
         </button>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </Card>
+
+      {!loading && segments.length === 0 && !error && (
+        <p className="text-sm text-gray-500">
+          未发现明显语义相似的片段（阈值 {threshold.toFixed(2)}）。AI 分析可能漏检长距离跨段重复，可降低阈值后重试。
+        </p>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {segments.map((seg, i) => {
