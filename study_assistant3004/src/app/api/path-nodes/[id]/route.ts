@@ -1,0 +1,138 @@
+import { unlink } from "node:fs/promises";
+import { prisma } from "@/lib/prisma";
+import { diffRemovedIds, pickEnum } from "@/lib/utils";
+
+/** 收集节点及其所有后代节点的 id */
+async function collectDescendantIds(id: string): Promise<string[]> {
+  const ids: string[] = [];
+  const queue = [id];
+  while (queue.length) {
+    const cur = queue.pop()!;
+    ids.push(cur);
+    const children = await prisma.pathNode.findMany({
+      where: { parentId: cur },
+      select: { id: true },
+    });
+    queue.push(...children.map((c) => c.id));
+  }
+  return ids;
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const body = (await request.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
+
+  const data: {
+    title?: string;
+    note?: string;
+    kind?: string;
+    status?: "NOT_STARTED" | "LEARNING" | "COMPLETED";
+    parentId?: string | null;
+    knowledgePoints?: { set: { id: string }[] };
+    files?: { set: { id: string }[] };
+  } = {};
+
+  if (typeof body.title === "string" && body.title.trim())
+    data.title = body.title.trim();
+  if (typeof body.note === "string") data.note = body.note;
+  if (typeof body.kind === "string") data.kind = body.kind;
+  if (typeof body.status === "string")
+    data.status = pickEnum(
+      body.status,
+      ["NOT_STARTED", "LEARNING", "COMPLETED"],
+      "NOT_STARTED",
+    );
+  if (body.parentId === null) data.parentId = null;
+  else if (typeof body.parentId === "string") data.parentId = body.parentId;
+
+  if (Array.isArray(body.knowledgePointIds)) {
+    data.knowledgePoints = {
+      set: (body.knowledgePointIds as string[]).map((kid) => ({ id: kid })),
+    };
+  }
+
+  // 记录本次被解绑（但可能仍绑定在其他节点上）的文件，稍后清理真正没人引用的
+  let removedFileIds: string[] = [];
+  if (Array.isArray(body.fileIds)) {
+    const nextFileIds = body.fileIds as string[];
+    const current = await prisma.pathNode.findUnique({
+      where: { id },
+      select: { files: { select: { id: true } } },
+    });
+    removedFileIds = diffRemovedIds(
+      (current?.files ?? []).map((f) => f.id),
+      nextFileIds,
+    );
+    data.files = {
+      set: nextFileIds.map((fid) => ({ id: fid })),
+    };
+  }
+
+  const node = await prisma.pathNode.update({
+    where: { id },
+    data,
+    include: {
+      knowledgePoints: { select: { id: true, title: true } },
+      files: { select: { id: true, filename: true } },
+    },
+  });
+
+  // 节点完成 → 绑定文件也进入完成状态
+  if (data.status === "COMPLETED") {
+    await prisma.studyFile.updateMany({
+      where: { pathNodes: { some: { id } } },
+      data: { status: "COMPLETED" },
+    });
+  }
+
+  // 解绑后已无任何节点引用的文件 → 数据库记录与磁盘文件一并清理，
+  // 否则会变成"幽灵文件"，继续被归档文件列表和进度统计算进去
+  if (removedFileIds.length > 0) {
+    const unbound = await prisma.studyFile.findMany({
+      where: { id: { in: removedFileIds }, pathNodes: { none: {} } },
+      select: { id: true, storedPath: true },
+    });
+    if (unbound.length > 0) {
+      await prisma.studyFile.deleteMany({
+        where: { id: { in: unbound.map((f) => f.id) } },
+      });
+      await Promise.all(
+        unbound.map((f) => unlink(f.storedPath).catch(() => {})),
+      );
+    }
+  }
+
+  return Response.json(node);
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
+  // 收集该节点及所有后代，删除其绑定文件（数据库记录 + 磁盘文件）
+  const nodeIds = await collectDescendantIds(id);
+  const files = await prisma.studyFile.findMany({
+    where: { pathNodes: { some: { id: { in: nodeIds } } } },
+    select: { id: true, storedPath: true },
+  });
+
+  // 级联删除子树（onDelete: Cascade 处理 parent 关系）
+  await prisma.pathNode.delete({ where: { id } });
+
+  if (files.length) {
+    await prisma.studyFile.deleteMany({
+      where: { id: { in: files.map((f) => f.id) } },
+    });
+    await Promise.all(files.map((f) => unlink(f.storedPath).catch(() => {})));
+  }
+
+  return Response.json({ ok: true });
+}

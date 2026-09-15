@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum MasteryStage {
+  NOT_STARTED
+  LEARNING
+  MASTERED
+  REVIEW
+}
+
+enum NodeStatus {
+  NOT_STARTED
+  LEARNING
+  COMPLETED
+}
+
+enum FileStatus {
+  NOT_STARTED
+  LEARNING
+  COMPLETED
+  KEY_ARCHIVE
+}
+
+enum CheckInStatus {
+  MASTERED
+  PARTIAL
+  REVIEW
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  color       String   @default("#3b82f6")
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  knowledgePoints KnowledgePoint[]
+  pathNodes       PathNode[]
+  files           StudyFile[]
+  checkIns        CheckIn[]
+  reviews         Review[]
+}
+
+model KnowledgePoint {
+  id         String       @id @default(cuid())
+  title      String
+  content    String       @default("")
+  note       String       @default("")
+  difficulty Difficulty   @default(MEDIUM)
+  stage      MasteryStage @default(NOT_STARTED)
+  tags       String       @default("")
+  archived   Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  pathNodes PathNode[]
+  checkIns  CheckIn[]
+  reviews   Review[]
+}
+
+model PathNode {
+  id        String     @id @default(cuid())
+  title     String
+  kind      String     @default("chapter")
+  note      String     @default("")
+  order     Int        @default(0)
+  status    NodeStatus @default(NOT_STARTED)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   PathNode?  @relation("PathNodeTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children PathNode[] @relation("PathNodeTree")
+
+  knowledgePoints KnowledgePoint[]
+  files           StudyFile[]
+  checkIns        CheckIn[]
+  reviews         Review[]
+}
+
+model StudyFile {
+  id         String     @id @default(cuid())
+  filename   String
+  storedPath String
+  mimeType   String
+  size       Int
+  status     FileStatus @default(NOT_STARTED)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  pathNodes PathNode[]
+}
+
+model CheckIn {
+  id              String        @id @default(cuid())
+  date            DateTime      @default(now())
+  durationMinutes Int           @default(0)
+  status          CheckInStatus @default(PARTIAL)
+  note            String        @default("")
+  createdAt       DateTime      @default(now())
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  knowledgePointId String?
+  knowledgePoint   KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
+
+  pathNodeId String?
+  pathNode   PathNode? @relation(fields: [pathNodeId], references: [id], onDelete: SetNull)
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  date       DateTime @default(now())
+  gain       String   @default("")
+  question   String   @default("")
+  plan       String   @default("")
+  difficulty String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  knowledgePointId String?
+  knowledgePoint   KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
+
+  pathNodeId String?
+  pathNode   PathNode? @relation(fields: [pathNodeId], references: [id], onDelete: SetNull)
+}
