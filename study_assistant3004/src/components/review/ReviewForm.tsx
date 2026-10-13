@@ -35,7 +35,10 @@ export function ReviewForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // 打开表单时重置（渲染期调整，避免在 effect 里同步 setState）
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       setSubjectId(defaultSubjectId ?? "");
       setNodeId("");
@@ -45,17 +48,29 @@ export function ReviewForm({
       setDifficulty("");
       setError(null);
     }
-  }, [open, defaultSubjectId]);
+  }
+
+  // 学科变化时清空已选节点（渲染期调整）
+  const [prevSubjectId, setPrevSubjectId] = useState(subjectId);
+  if (subjectId !== prevSubjectId) {
+    setPrevSubjectId(subjectId);
+    setNodes([]);
+  }
 
   useEffect(() => {
-    if (!subjectId) {
-      setNodes([]);
-      return;
-    }
+    if (!subjectId) return;
+    let cancelled = false;
     fetch(`/api/path-nodes?subjectId=${subjectId}`, { cache: "no-store" })
       .then((r) => r.json())
-      .then(setNodes)
-      .catch(() => setNodes([]));
+      .then((data) => {
+        if (!cancelled) setNodes(data);
+      })
+      .catch(() => {
+        if (!cancelled) setNodes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [subjectId]);
 
   async function submit(e: React.FormEvent) {

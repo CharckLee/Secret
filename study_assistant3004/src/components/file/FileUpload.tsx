@@ -20,19 +20,29 @@ export function FileUpload({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!subjectId) {
-      setNodes([]);
-      setNodeId("");
-      setNodeFilter("");
-      return;
-    }
+  // 学科变化时清空已选章节与筛选（渲染期调整，避免在 effect 里同步 setState）
+  const [prevSubjectId, setPrevSubjectId] = useState(subjectId);
+  if (subjectId !== prevSubjectId) {
+    setPrevSubjectId(subjectId);
+    setNodes([]);
     setNodeId("");
     setNodeFilter("");
+  }
+
+  useEffect(() => {
+    if (!subjectId) return;
+    let cancelled = false;
     fetch(`/api/path-nodes?subjectId=${subjectId}`, { cache: "no-store" })
       .then((r) => r.json())
-      .then(setNodes)
-      .catch(() => setNodes([]));
+      .then((data) => {
+        if (!cancelled) setNodes(data);
+      })
+      .catch(() => {
+        if (!cancelled) setNodes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [subjectId]);
 
   const visibleNodes = nodeFilter

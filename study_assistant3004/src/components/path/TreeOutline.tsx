@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -102,7 +102,12 @@ export function TreeOutline({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  useEffect(() => setLocalNodes(nodes), [nodes]);
+  // 外部数据刷新后同步本地树（渲染期调整，避免在 effect 里同步 setState）
+  const [prevNodes, setPrevNodes] = useState(nodes);
+  if (nodes !== prevNodes) {
+    setPrevNodes(nodes);
+    setLocalNodes(nodes);
+  }
 
   const tree = buildTree(localNodes);
 
@@ -622,17 +627,21 @@ function NodeForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    setTitle(node?.title ?? "");
-    setKind(node?.kind ?? "chapter");
-    setNote(node?.note ?? "");
-    setStatus(node?.status ?? "NOT_STARTED");
-    setParent(node?.parentId ?? parentId ?? "");
-    setBoundFiles(node?.files ?? []);
-    setFile(null);
-    setError(null);
-  }, [open, node, parentId]);
+  // 打开弹窗时用最新节点数据填充表单（渲染期调整，避免在 effect 里同步 setState）
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setTitle(node?.title ?? "");
+      setKind(node?.kind ?? "chapter");
+      setNote(node?.note ?? "");
+      setStatus(node?.status ?? "NOT_STARTED");
+      setParent(node?.parentId ?? parentId ?? "");
+      setBoundFiles(node?.files ?? []);
+      setFile(null);
+      setError(null);
+    }
+  }
 
   const excluded = node ? descendants(allNodes, node.id) : new Set<string>();
   const parentOptions = allNodes.filter(

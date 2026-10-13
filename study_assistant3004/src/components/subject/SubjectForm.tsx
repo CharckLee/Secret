@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -41,14 +41,17 @@ export function SubjectForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // 打开表单时用最新数据重置（渲染期调整，避免在 effect 里同步 setState）
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       setName(subject?.name ?? "");
       setColor(subject?.color ?? COLORS[0]);
       setDescription(subject?.description ?? "");
       setError(null);
     }
-  }, [open, subject]);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

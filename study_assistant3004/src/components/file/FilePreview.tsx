@@ -53,23 +53,35 @@ export function FilePreview({
   const image = file ? isImage(file.filename, file.mimeType) : false;
   const textFile = file ? isText(file.filename, file.mimeType) : false;
 
-  useEffect(() => {
-    if (!file || !textFile) {
-      setText(null);
-      return;
-    }
-    setLoading(true);
+  // file 或文件类型变化时重置预览状态（渲染期调整，避免在 effect 里同步 setState）
+  const previewKey = file && textFile ? file.id : null;
+  const [prevPreviewKey, setPrevPreviewKey] = useState<string | null>(null);
+  if (previewKey !== prevPreviewKey) {
+    setPrevPreviewKey(previewKey);
+    setText(null);
     setError(null);
-    fetch(`/api/files/${file.id}`, { cache: "no-store" })
-      .then((r) => r.text())
-      .then(setText)
-      .catch((e) => setError(e instanceof Error ? e.message : "加载失败"))
-      .finally(() => setLoading(false));
-  }, [file, textFile]);
+    setLoading(previewKey !== null);
+    setCopied(false);
+  }
 
   useEffect(() => {
-    setCopied(false);
-  }, [file]);
+    if (!file || !textFile) return;
+    let cancelled = false;
+    fetch(`/api/files/${file.id}`, { cache: "no-store" })
+      .then((r) => r.text())
+      .then((t) => {
+        if (!cancelled) setText(t);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "加载失败");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [file, textFile]);
 
   if (!file) return null;
 

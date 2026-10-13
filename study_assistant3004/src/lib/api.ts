@@ -28,8 +28,13 @@ export function useApi<T>(url: string) {
   const reload = useCallback(
     (silent = false) => {
       let cancelled = false;
-      if (!silent) setLoading(true);
-      setError(null);
+      // 放到微任务里设置：既保留"重新加载时显示 loading"的行为，
+      // 又让 effect 的同步路径不直接 setState（首次挂载时 loading 初值本就是 true）。
+      queueMicrotask(() => {
+        if (cancelled) return;
+        if (!silent) setLoading(true);
+        setError(null);
+      });
       const busted = `${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
       fetch(busted, { cache: "no-store" })
         .then(async (res) => {
