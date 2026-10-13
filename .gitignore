@@ -1,1 +1,8 @@
-﻿search_essay*
+search_essay*
+
+# 与当前仓库无关的其他项目目录，各自独立管理；避免 git add -A 时被误提交
+Secret/
+SKILLS/
+minimall3002/
+finance.cli8501/
+Cinema-DNA/
