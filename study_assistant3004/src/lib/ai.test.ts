@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildRuleRecommendation, extractJson, parseAiRecommendation } from "./ai";
+import {
+  buildRuleRecommendation,
+  extractJson,
+  parseAiRecommendation,
+  selectUsableImages,
+} from "./ai";
 
 describe("extractJson", () => {
   it("parses plain JSON", () => {
@@ -120,5 +125,48 @@ describe("buildRuleRecommendation", () => {
 
   it("returns empty list when there is nothing to push", () => {
     expect(buildRuleRecommendation({ nodes: [] }).weakPoints).toEqual([]);
+  });
+});
+
+describe("selectUsableImages", () => {
+  it("keeps only images", () => {
+    const r = selectUsableImages([
+      { filename: "a.jpg", mimeType: "image/jpeg", size: 1000 },
+      { filename: "b.pdf", mimeType: "application/pdf", size: 1000 },
+      { filename: "c.txt", mimeType: "text/plain", size: 10 },
+    ]);
+    expect(r.map((f) => f.filename)).toEqual(["a.jpg"]);
+  });
+
+  it("drops images over the per-image size limit", () => {
+    const r = selectUsableImages(
+      [
+        { filename: "small.jpg", mimeType: "image/jpeg", size: 1000 },
+        { filename: "huge.jpg", mimeType: "image/jpeg", size: 5_000_000 },
+      ],
+      { maxBytes: 2_000_000 },
+    );
+    expect(r.map((f) => f.filename)).toEqual(["small.jpg"]);
+  });
+
+  it("caps how many images are sent", () => {
+    const files = Array.from({ length: 6 }, (_, i) => ({
+      filename: `img${i}.jpg`,
+      mimeType: "image/jpeg",
+      size: 1000,
+    }));
+    expect(selectUsableImages(files, { maxCount: 3 })).toHaveLength(3);
+  });
+
+  it("preserves the incoming order", () => {
+    const r = selectUsableImages([
+      { filename: "b.jpg", mimeType: "image/jpeg", size: 1 },
+      { filename: "a.jpg", mimeType: "image/jpeg", size: 1 },
+    ]);
+    expect(r.map((f) => f.filename)).toEqual(["b.jpg", "a.jpg"]);
+  });
+
+  it("returns an empty list for empty input", () => {
+    expect(selectUsableImages([])).toEqual([]);
   });
 });
