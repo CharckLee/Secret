@@ -122,7 +122,9 @@
 
 > **验收（commit `d257c06`）**：vitest 34 绿（新增 `path.test.ts` 6 个）· `tsc` exit 0 · `next build` 成功 · 端到端 **18/18 PASS**（上传不绑定→进未归档、从节点解绑→回到未归档且**不被删除**、统计排除未归档、归档回节点）· 数据零变化 · lint 无新增
 >
-> 超出原清单的两处必要改动：`GET /api/path-nodes` 的 `subjectId` 改为可选（供"归档到节点"的分组选择器）；`PATCH /api/files/[id]` 改为**仅在显式传 status 时**才改状态（否则归档时会误重置状态）。
+> 超出原清单的改动：`GET /api/path-nodes` 的 `subjectId` 改为可选（供"归档到节点"的分组选择器）；`PATCH /api/files/[id]` 改为**仅在显式传 status 时**才改状态（否则归档时会误重置状态）。
+>
+> **补充（commit `73c31a6`）**：删除学习节点时**不再自动删文件**。改为弹窗二选一——默认「转入未归档并删除」，也可选「连带删除文件」（后端 `DELETE /api/path-nodes/[id]?deleteFiles=true`）。端到端 **23/23 PASS**，两条路径都实测：默认路径文件进未归档且磁盘文件保留，`deleteFiles=true` 路径记录与磁盘文件一并清除。
 
 **工具**：同第 1 轮
 
