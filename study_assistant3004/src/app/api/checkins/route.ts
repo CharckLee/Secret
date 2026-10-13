@@ -9,7 +9,6 @@ export async function GET(request: Request) {
     where,
     include: {
       subject: { select: { id: true, name: true, color: true } },
-      knowledgePoint: { select: { id: true, title: true } },
       pathNode: { select: { id: true, title: true } },
     },
     orderBy: { date: "desc" },
@@ -36,8 +35,6 @@ export async function POST(request: Request) {
     ["MASTERED", "PARTIAL", "REVIEW"],
     "PARTIAL",
   );
-  const knowledgePointId =
-    typeof body.knowledgePointId === "string" ? body.knowledgePointId : null;
   const pathNodeId =
     typeof body.pathNodeId === "string" ? body.pathNodeId : null;
   const date = typeof body.date === "string" ? new Date(body.date) : new Date();
@@ -49,12 +46,11 @@ export async function POST(request: Request) {
       status,
       date,
       note: typeof body.note === "string" ? body.note : "",
-      knowledgePointId,
       pathNodeId,
     },
   });
 
-  // 闭环：已掌握打卡 → 自动完成对应节点 / 掌握对应知识点 / 同步文件完成
+  // 闭环：已掌握打卡 → 自动完成对应节点 / 同步绑定文件完成
   if (status === "MASTERED") {
     if (pathNodeId) {
       await prisma.pathNode
@@ -64,14 +60,6 @@ export async function POST(request: Request) {
         .updateMany({
           where: { pathNodes: { some: { id: pathNodeId } } },
           data: { status: "COMPLETED" },
-        })
-        .catch(() => {});
-    }
-    if (knowledgePointId) {
-      await prisma.knowledgePoint
-        .update({
-          where: { id: knowledgePointId },
-          data: { stage: "MASTERED" },
         })
         .catch(() => {});
     }

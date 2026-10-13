@@ -40,33 +40,6 @@ export async function GET() {
     trend.push({ date: key, minutes: minutesByDay.get(key) ?? 0 });
   }
 
-  const masteryRows = await prisma.knowledgePoint.groupBy({
-    by: ["stage"],
-    _count: { _all: true },
-  });
-  const mastery = masteryRows.map((m) => ({
-    stage: m.stage,
-    count: m._count._all,
-  }));
-
-  const weakPoints = await prisma.knowledgePoint.findMany({
-    where: {
-      OR: [
-        { stage: "LEARNING" },
-        { stage: "REVIEW" },
-        { stage: { not: "MASTERED" }, difficulty: "HARD" },
-      ],
-    },
-    select: {
-      id: true,
-      title: true,
-      stage: true,
-      difficulty: true,
-      subject: { select: { name: true, color: true } },
-    },
-    take: 20,
-  });
-
   return Response.json({
     global: { ...global, streakDays },
     subjects: subjects.map((s) => ({
@@ -75,12 +48,9 @@ export async function GET() {
       color: s.color,
       completionRate: s.progress.completionRate,
       nodeRate: s.progress.nodeRate,
-      knowledgeRate: s.progress.knowledgeRate,
       fileRate: s.progress.fileRate,
       totalDurationMinutes: s.totalDurationMinutes,
     })),
     trend,
-    mastery,
-    weakPoints,
   });
 }

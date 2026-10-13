@@ -34,7 +34,6 @@ export async function PATCH(
     kind?: string;
     status?: "NOT_STARTED" | "LEARNING" | "COMPLETED";
     parentId?: string | null;
-    knowledgePoints?: { set: { id: string }[] };
     files?: { set: { id: string }[] };
   } = {};
 
@@ -50,12 +49,6 @@ export async function PATCH(
     );
   if (body.parentId === null) data.parentId = null;
   else if (typeof body.parentId === "string") data.parentId = body.parentId;
-
-  if (Array.isArray(body.knowledgePointIds)) {
-    data.knowledgePoints = {
-      set: (body.knowledgePointIds as string[]).map((kid) => ({ id: kid })),
-    };
-  }
 
   // 记录本次被解绑（但可能仍绑定在其他节点上）的文件，稍后清理真正没人引用的
   let removedFileIds: string[] = [];
@@ -78,7 +71,6 @@ export async function PATCH(
     where: { id },
     data,
     include: {
-      knowledgePoints: { select: { id: true, title: true } },
       files: { select: { id: true, filename: true } },
     },
   });

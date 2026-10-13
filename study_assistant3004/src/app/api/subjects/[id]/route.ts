@@ -10,11 +10,9 @@ export async function GET(
   const subject = await prisma.subject.findUnique({
     where: { id },
     include: {
-      knowledgePoints: { orderBy: { createdAt: "desc" } },
       pathNodes: {
         orderBy: { order: "asc" },
         include: {
-          knowledgePoints: { select: { id: true, title: true } },
           files: { select: { id: true, filename: true } },
         },
       },
@@ -26,7 +24,6 @@ export async function GET(
       checkIns: {
         orderBy: { date: "desc" },
         include: {
-          knowledgePoint: { select: { id: true, title: true } },
           pathNode: { select: { id: true, title: true } },
         },
       },
@@ -38,7 +35,6 @@ export async function GET(
 
   const progress = calcSubjectProgress({
     nodes: subject.pathNodes,
-    knowledgePoints: subject.knowledgePoints,
     files: subject.files,
   });
   const totalDurationMinutes = subject.checkIns.reduce(

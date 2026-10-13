@@ -9,24 +9,18 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AiRecommendPanel } from "@/components/ai/AiRecommendPanel";
 import { CheckInForm } from "@/components/checkin/CheckInForm";
-import { KnowledgeForm } from "@/components/knowledge/KnowledgeForm";
 import { TreeOutline } from "@/components/path/TreeOutline";
 import { ReviewForm } from "@/components/review/ReviewForm";
 import { SubjectForm } from "@/components/subject/SubjectForm";
 import { apiFetch } from "@/lib/api";
 import { cn, formatMinutes } from "@/lib/utils";
-import {
-  CHECKIN_STATUS_LABELS,
-  DIFFICULTY_LABELS,
-  STAGE_LABELS,
-} from "@/types";
+import { CHECKIN_STATUS_LABELS } from "@/types";
 import type { SubjectDetail as SubjectDetailData } from "@/types/api";
 
-type Tab = "path" | "knowledge" | "checkin" | "review" | "ai";
+type Tab = "path" | "checkin" | "review" | "ai";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "path", label: "学习路径" },
-  { key: "knowledge", label: "知识点" },
   { key: "checkin", label: "打卡" },
   { key: "review", label: "复盘" },
   { key: "ai", label: "AI 学习建议" },
@@ -40,7 +34,6 @@ export function SubjectDetail({
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("path");
   const [editOpen, setEditOpen] = useState(false);
-  const [kpFormOpen, setKpFormOpen] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -51,8 +44,7 @@ export function SubjectDetail({
   }
 
   async function removeSubject() {
-    if (!confirm("确定删除该学科？其下知识点、路径、打卡、复盘将一并删除。"))
-      return;
+    if (!confirm("确定删除该学科？其下路径、打卡、复盘将一并删除。")) return;
     await apiFetch(`/api/subjects/${data.id}`, { method: "DELETE" }).catch(
       () => {},
     );
@@ -91,7 +83,7 @@ export function SubjectDetail({
         <p className="text-sm text-slate-500">{data.description}</p>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="完成率"
           value={`${data.progress.completionRate}%`}
@@ -100,10 +92,6 @@ export function SubjectDetail({
         <StatCard
           label="学习时长"
           value={formatMinutes(data.totalDurationMinutes)}
-        />
-        <StatCard
-          label="知识点"
-          value={`${data.progress.masteredKnowledge}/${data.progress.totalKnowledge} 掌握`}
         />
         <StatCard
           label="归档文件"
@@ -132,52 +120,8 @@ export function SubjectDetail({
         <TreeOutline
           nodes={data.pathNodes}
           subjectId={data.id}
-          knowledgePoints={data.knowledgePoints}
           onChanged={refresh}
         />
-      )}
-
-      {tab === "knowledge" && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => setKpFormOpen(true)}>新建知识点</Button>
-          </div>
-          {data.knowledgePoints.length === 0 ? (
-            <EmptyState title="该学科还没有知识点" />
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {data.knowledgePoints.map((k) => (
-                <Card key={k.id} className="p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate font-medium text-slate-800">
-                      {k.title}
-                    </p>
-                    <Badge tone={stageTone(k.stage)}>
-                      {STAGE_LABELS[k.stage]}
-                    </Badge>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    <Badge tone="slate">{DIFFICULTY_LABELS[k.difficulty]}</Badge>
-                    {k.tags
-                      .split(",")
-                      .map((t) => t.trim())
-                      .filter(Boolean)
-                      .map((t) => (
-                        <Badge key={t} tone="violet">
-                          {t}
-                        </Badge>
-                      ))}
-                  </div>
-                  {k.content && (
-                    <p className="mt-2 line-clamp-2 text-sm text-slate-500">
-                      {k.content}
-                    </p>
-                  )}
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
       )}
 
       {tab === "checkin" && (
@@ -204,7 +148,7 @@ export function SubjectDetail({
                   </Badge>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-slate-700">
-                      {c.pathNode?.title ?? c.knowledgePoint?.title ?? "自由学习"}
+                      {c.pathNode?.title ?? "自由学习"}
                     </p>
                     <p className="text-xs text-slate-400">
                       {new Date(c.date).toLocaleString("zh-CN")}
@@ -278,13 +222,6 @@ export function SubjectDetail({
         subject={data}
         onSaved={refresh}
       />
-      <KnowledgeForm
-        open={kpFormOpen}
-        onClose={() => setKpFormOpen(false)}
-        subjects={subjects}
-        point={null}
-        onSaved={refresh}
-      />
       <CheckInForm
         open={checkinOpen}
         onClose={() => setCheckinOpen(false)}
@@ -318,17 +255,4 @@ function StatCard({
       <p className="mt-1 text-xs text-slate-500">{label}</p>
     </Card>
   );
-}
-
-function stageTone(stage: string): "slate" | "amber" | "emerald" | "rose" {
-  switch (stage) {
-    case "MASTERED":
-      return "emerald";
-    case "LEARNING":
-      return "amber";
-    case "REVIEW":
-      return "rose";
-    default:
-      return "slate";
-  }
 }

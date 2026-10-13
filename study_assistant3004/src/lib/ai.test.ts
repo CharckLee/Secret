@@ -63,14 +63,14 @@ describe("parseAiRecommendation", () => {
 });
 
 describe("buildRuleRecommendation", () => {
-  it("maps weak points to suggestion", () => {
+  it("maps focus nodes to suggestions", () => {
     const r = buildRuleRecommendation({
-      weakPoints: [
+      nodes: [
         {
           title: "中值定理",
           subjectName: "高等数学",
-          stage: "LEARNING",
-          difficulty: "HARD",
+          status: "LEARNING",
+          note: "",
         },
       ],
     });
@@ -78,5 +78,47 @@ describe("buildRuleRecommendation", () => {
     expect(r.weakPoints[0].title).toBe("中值定理");
     expect(r.weakPoints[0].summary).toContain("高等数学");
     expect(r.weakPoints[0].summary).toContain("学习中");
+  });
+
+  it("marks nodes that have no note yet", () => {
+    const r = buildRuleRecommendation({
+      nodes: [
+        {
+          title: "微管",
+          subjectName: "细胞生物学",
+          status: "NOT_STARTED",
+          note: "",
+        },
+      ],
+    });
+    expect(r.weakPoints[0].summary).toContain("尚无笔记");
+  });
+
+  it("omits the no-note hint when a note exists", () => {
+    const r = buildRuleRecommendation({
+      nodes: [
+        {
+          title: "微管",
+          subjectName: "细胞生物学",
+          status: "NOT_STARTED",
+          note: "由微管蛋白二聚体组成",
+        },
+      ],
+    });
+    expect(r.weakPoints[0].summary).not.toContain("尚无笔记");
+  });
+
+  it("caps the list at 5 items", () => {
+    const nodes = Array.from({ length: 8 }, (_, i) => ({
+      title: `节点${i}`,
+      subjectName: "测试",
+      status: "NOT_STARTED" as const,
+      note: "",
+    }));
+    expect(buildRuleRecommendation({ nodes }).weakPoints).toHaveLength(5);
+  });
+
+  it("returns empty list when there is nothing to push", () => {
+    expect(buildRuleRecommendation({ nodes: [] }).weakPoints).toEqual([]);
   });
 });

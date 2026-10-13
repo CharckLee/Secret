@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 import { useFilePreview } from "@/components/file/FilePreviewProvider";
 import { NODE_STATUS_LABELS } from "@/types";
 import type { NodeStatus } from "@/types";
-import type { KnowledgePointItem, PathNodeItem } from "@/types/api";
+import type { PathNodeItem } from "@/types/api";
 
 const KIND_LABELS: Record<string, string> = {
   chapter: "章节",
@@ -80,12 +80,10 @@ function descendants(nodes: PathNodeItem[], id: string): Set<string> {
 export function TreeOutline({
   nodes,
   subjectId,
-  knowledgePoints,
   onChanged,
 }: {
   nodes: PathNodeItem[];
   subjectId: string;
-  knowledgePoints: KnowledgePointItem[];
   onChanged: () => void;
 }) {
   const [localNodes, setLocalNodes] = useState<PathNodeItem[]>(nodes);
@@ -224,7 +222,6 @@ export function TreeOutline({
         parentId={formParentId}
         allNodes={localNodes}
         subjectId={subjectId}
-        knowledgePoints={knowledgePoints}
         onSaved={() => {
           setFormOpen(false);
           onChanged();
@@ -390,7 +387,6 @@ function NodeForm({
   parentId,
   allNodes,
   subjectId,
-  knowledgePoints,
   onSaved,
 }: {
   open: boolean;
@@ -399,7 +395,6 @@ function NodeForm({
   parentId: string | null;
   allNodes: PathNodeItem[];
   subjectId: string;
-  knowledgePoints: KnowledgePointItem[];
   onSaved: () => void;
 }) {
   const { open: openPreview } = useFilePreview();
@@ -408,7 +403,6 @@ function NodeForm({
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<NodeStatus>("NOT_STARTED");
   const [parent, setParent] = useState("");
-  const [selectedKp, setSelectedKp] = useState<Set<string>>(new Set());
   const [file, setFile] = useState<File | null>(null);
   const [boundFiles, setBoundFiles] = useState<
     { id: string; filename: string; storedPath?: string }[]
@@ -423,7 +417,6 @@ function NodeForm({
     setNote(node?.note ?? "");
     setStatus(node?.status ?? "NOT_STARTED");
     setParent(node?.parentId ?? parentId ?? "");
-    setSelectedKp(new Set((node?.knowledgePoints ?? []).map((k) => k.id)));
     setBoundFiles(node?.files ?? []);
     setFile(null);
     setError(null);
@@ -434,21 +427,11 @@ function NodeForm({
     (n) => n.id !== node?.id && !excluded.has(n.id),
   );
 
-  function toggleKp(id: string) {
-    setSelectedKp((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
     try {
-      const kpIds = Array.from(selectedKp);
       let nodeId: string;
 
       if (node) {
@@ -460,7 +443,6 @@ function NodeForm({
             note,
             status,
             parentId: parent || null,
-            knowledgePointIds: kpIds,
             fileIds: boundFiles.map((f) => f.id),
           }),
         });
@@ -477,12 +459,6 @@ function NodeForm({
           }),
         });
         nodeId = created.id;
-        if (kpIds.length > 0) {
-          await apiFetch(`/api/path-nodes/${created.id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ knowledgePointIds: kpIds }),
-          });
-        }
       }
 
       // 可选：导入文件并绑定到该节点
@@ -620,31 +596,6 @@ function NodeForm({
             </div>
           </div>
         )}
-        <div>
-          <label className="mb-1 block text-sm text-slate-600">
-            绑定知识点
-          </label>
-          <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
-            {knowledgePoints.length === 0 ? (
-              <p className="text-xs text-slate-400">该学科还没有知识点</p>
-            ) : (
-              knowledgePoints.map((k) => (
-                <label
-                  key={k.id}
-                  className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-slate-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedKp.has(k.id)}
-                    onChange={() => toggleKp(k.id)}
-                    className="accent-blue-600"
-                  />
-                  <span className="truncate text-slate-700">{k.title}</span>
-                </label>
-              ))
-            )}
-          </div>
-        </div>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>

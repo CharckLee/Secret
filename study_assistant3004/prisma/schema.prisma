@@ -7,19 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
-}
-
-enum MasteryStage {
-  NOT_STARTED
-  LEARNING
-  MASTERED
-  REVIEW
-}
-
 enum NodeStatus {
   NOT_STARTED
   LEARNING
@@ -47,29 +34,8 @@ model Subject {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  knowledgePoints KnowledgePoint[]
-  pathNodes       PathNode[]
-  files           StudyFile[]
-  checkIns        CheckIn[]
-  reviews         Review[]
-}
-
-model KnowledgePoint {
-  id         String       @id @default(cuid())
-  title      String
-  content    String       @default("")
-  note       String       @default("")
-  difficulty Difficulty   @default(MEDIUM)
-  stage      MasteryStage @default(NOT_STARTED)
-  tags       String       @default("")
-  archived   Boolean      @default(false)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-
-  subjectId String
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-
   pathNodes PathNode[]
+  files     StudyFile[]
   checkIns  CheckIn[]
   reviews   Review[]
 }
@@ -91,10 +57,9 @@ model PathNode {
   parent   PathNode?  @relation("PathNodeTree", fields: [parentId], references: [id], onDelete: Cascade)
   children PathNode[] @relation("PathNodeTree")
 
-  knowledgePoints KnowledgePoint[]
-  files           StudyFile[]
-  checkIns        CheckIn[]
-  reviews         Review[]
+  files    StudyFile[]
+  checkIns CheckIn[]
+  reviews  Review[]
 }
 
 model StudyFile {
@@ -124,9 +89,6 @@ model CheckIn {
   subjectId String
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
-  knowledgePointId String?
-  knowledgePoint   KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
-
   pathNodeId String?
   pathNode   PathNode? @relation(fields: [pathNodeId], references: [id], onDelete: SetNull)
 }
@@ -143,9 +105,6 @@ model Review {
 
   subjectId String?
   subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-
-  knowledgePointId String?
-  knowledgePoint   KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
 
   pathNodeId String?
   pathNode   PathNode? @relation(fields: [pathNodeId], references: [id], onDelete: SetNull)

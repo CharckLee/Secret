@@ -27,13 +27,11 @@ export function ReviewForm({
 }) {
   const [subjectId, setSubjectId] = useState("");
   const [nodeId, setNodeId] = useState("");
-  const [kpId, setKpId] = useState("");
   const [gain, setGain] = useState("");
   const [question, setQuestion] = useState("");
   const [plan, setPlan] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [nodes, setNodes] = useState<Option[]>([]);
-  const [kps, setKps] = useState<Option[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +39,6 @@ export function ReviewForm({
     if (open) {
       setSubjectId(defaultSubjectId ?? "");
       setNodeId("");
-      setKpId("");
       setGain("");
       setQuestion("");
       setPlan("");
@@ -53,19 +50,12 @@ export function ReviewForm({
   useEffect(() => {
     if (!subjectId) {
       setNodes([]);
-      setKps([]);
       return;
     }
     fetch(`/api/path-nodes?subjectId=${subjectId}`, { cache: "no-store" })
       .then((r) => r.json())
       .then(setNodes)
       .catch(() => setNodes([]));
-    fetch(`/api/knowledge-points?subjectId=${subjectId}`, {
-      cache: "no-store",
-    })
-      .then((r) => r.json())
-      .then(setKps)
-      .catch(() => setKps([]));
   }, [subjectId]);
 
   async function submit(e: React.FormEvent) {
@@ -78,7 +68,6 @@ export function ReviewForm({
         body: JSON.stringify({
           subjectId: subjectId || null,
           pathNodeId: nodeId || null,
-          knowledgePointId: kpId || null,
           gain,
           question,
           plan,
@@ -97,7 +86,7 @@ export function ReviewForm({
   return (
     <Modal open={open} onClose={onClose} title="填写学习复盘">
       <form onSubmit={submit} className="space-y-4">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm text-slate-600">学科</label>
             <Select
@@ -119,17 +108,6 @@ export function ReviewForm({
               {nodes.map((n) => (
                 <option key={n.id} value={n.id}>
                   {n.title}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-slate-600">知识点</label>
-            <Select value={kpId} onChange={(e) => setKpId(e.target.value)}>
-              <option value="">不绑定</option>
-              {kps.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.title}
                 </option>
               ))}
             </Select>

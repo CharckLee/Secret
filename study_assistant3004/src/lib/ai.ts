@@ -1,9 +1,9 @@
-import { DIFFICULTY_LABELS, STAGE_LABELS } from "@/types";
-import type { Difficulty, MasteryStage } from "@/types";
+import { NODE_STATUS_LABELS } from "@/types";
+import type { NodeStatus } from "@/types";
 
 export interface AiWeakPoint {
   title: string;
-  /** 掌握现状 / 薄弱原因 */
+  /** 掌握现状 / 待推进原因 */
   summary: string;
   /** 针对性学习方法 */
   method: string;
@@ -14,17 +14,25 @@ export interface AiRecommendation {
   weakPoints: AiWeakPoint[];
 }
 
-export const AI_SYSTEM_PROMPT = `你是一名学习建议助手，面向大学生/理工科/医学生。根据用户学科的薄弱知识点，输出 JSON：先用一句话汇总薄弱点整体情况，再针对每个薄弱点给出「掌握现状/薄弱原因」和「针对性学习方法」。严格只输出 JSON，不要输出任何其他文字或代码块标记。
+/** AI 建议的输入单位：一个待推进的学习节点 */
+export interface AiFocusNode {
+  title: string;
+  subjectName: string;
+  status: NodeStatus;
+  note: string;
+}
+
+export const AI_SYSTEM_PROMPT = `你是一名学习建议助手，面向大学生/理工科/医学生。根据用户给出的待推进学习节点（来自他的学习路径树），输出 JSON：先用一句话汇总整体情况，再针对每个待推进节点给出「当前状态/为什么该先学它」和「针对性学习方法」。严格只输出 JSON，不要输出任何其他文字或代码块标记。
 
 JSON 结构（所有字段都必须出现）：
 {
-  "summary": "一句话汇总该学科薄弱知识点整体情况",
+  "summary": "一句话汇总当前学习路径的推进状况",
   "weakPoints": [
-    { "title": "薄弱知识点名称", "summary": "掌握现状或薄弱原因", "method": "针对性的学习方法与具体步骤" }
+    { "title": "节点名称", "summary": "当前状态或为什么优先推进它", "method": "针对性的学习方法与具体步骤" }
   ]
 }
 
-要求：weakPoints 不超过 5 条；全部用中文；必须结合下面给出的真实薄弱知识点数据，不要编造不存在的知识点；若无数据则 weakPoints 留空数组，summary 说明"暂无薄弱知识点"。`;
+要求：weakPoints 不超过 5 条；全部用中文；必须结合下面给出的真实节点数据，不要编造不存在的节点；若无数据则 weakPoints 留空数组，summary 说明"暂无待推进节点"。`;
 
 /** 从模型返回文本中提取 JSON（兼容纯 JSON、markdown 代码块、前后杂文本） */
 export function extractJson(text: string): unknown | null {
@@ -83,41 +91,45 @@ export function parseAiRecommendation(
 
 /** 无 API 密钥时的规则建议（本地可测试） */
 export function buildRuleRecommendation(input: {
-  weakPoints: {
-    title: string;
-    subjectName: string;
-    stage: MasteryStage;
-    difficulty: Difficulty;
-  }[];
+  nodes: AiFocusNode[];
 }): AiRecommendation {
   return {
-    summary: "未配置 AI 密钥，以下为基于本地学习数据的薄弱点清单。",
-    weakPoints: input.weakPoints.slice(0, 5).map((w) => ({
-      title: w.title,
-      summary: `${w.subjectName} · ${STAGE_LABELS[w.stage]} · 难度${DIFFICULTY_LABELS[w.difficulty]}`,
-      method: "建议回归核心定义与典型例题，结合错题复盘巩固，再用输出式练习检验掌握程度。",
+    summary:
+      "未配置 AI 密钥，以下为基于本地学习数据、建议优先推进的节点清单。",
+    weakPoints: input.nodes.slice(0, 5).map((n) => ({
+      title: n.title,
+      summary: `${n.subjectName} · ${NODE_STATUS_LABELS[n.status]}${
+        n.note.trim() ? "" : " · 尚无笔记"
+      }`,
+      method:
+        "建议先通读本节内容，用自己的话写下要点笔记，再用典型题检验掌握程度。",
     })),
   };
 }
 
 export function buildPrompt(input: {
   subjectName?: string;
-  weakPoints: { title: string; subjectName: string }[];
+  nodes: AiFocusNode[];
 }): string {
   const header = input.subjectName
     ? `学科：${input.subjectName}`
     : "学科：全部学科";
-  const weakLines = input.weakPoints.length
-    ? input.weakPoints.map((w) => `- ${w.title}（${w.subjectName}）`)
-    : ["- （暂无薄弱知识点）"];
+  const lines = input.nodes.length
+    ? input.nodes.map(
+        (n) =>
+          `- ${n.title}（${n.subjectName} · ${NODE_STATUS_LABELS[n.status]}${
+            n.note.trim() ? ` · 笔记：${n.note.slice(0, 80)}` : " · 尚无笔记"
+          }）`,
+      )
+    : ["- （暂无待推进节点）"];
 
   return [
     header,
     "",
-    "薄弱知识点（学习中/待复习/高难度未掌握）：",
-    ...weakLines,
+    "待推进的学习节点（正在学习中，或尚未写笔记）：",
+    ...lines,
     "",
-    "请基于以上薄弱知识点，输出 JSON 学习建议（汇总 + 每个薄弱点的现状与学习方法）。",
+    "请基于以上节点，输出 JSON 学习建议（汇总 + 每个节点的现状与学习方法）。",
   ].join("\n");
 }
 

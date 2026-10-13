@@ -171,9 +171,7 @@ export function CheckInCenter() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-slate-700">
                       {c.subject?.name ?? "—"}
-                      {c.pathNode?.title || c.knowledgePoint?.title
-                        ? ` · ${c.pathNode?.title ?? c.knowledgePoint?.title}`
-                        : ""}
+                      {c.pathNode?.title ? ` · ${c.pathNode.title}` : ""}
                     </p>
                     <p className="text-xs text-slate-400">
                       {new Date(c.date).toLocaleString("zh-CN")}

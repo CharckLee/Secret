@@ -1,22 +1,7 @@
 // 与 Prisma enum 的字符串值保持一致，供纯逻辑层与测试使用（不依赖 Prisma 运行时）
-export type Difficulty = "EASY" | "MEDIUM" | "HARD";
-export type MasteryStage = "NOT_STARTED" | "LEARNING" | "MASTERED" | "REVIEW";
 export type NodeStatus = "NOT_STARTED" | "LEARNING" | "COMPLETED";
 export type FileStatus = "NOT_STARTED" | "LEARNING" | "COMPLETED" | "KEY_ARCHIVE";
 export type CheckInStatus = "MASTERED" | "PARTIAL" | "REVIEW";
-
-export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
-  EASY: "简单",
-  MEDIUM: "中等",
-  HARD: "困难",
-};
-
-export const STAGE_LABELS: Record<MasteryStage, string> = {
-  NOT_STARTED: "待学习",
-  LEARNING: "学习中",
-  MASTERED: "已掌握",
-  REVIEW: "待复习",
-};
 
 export const NODE_STATUS_LABELS: Record<NodeStatus, string> = {
   NOT_STARTED: "未开始",

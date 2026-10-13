@@ -3,28 +3,22 @@ import {
   calcGlobalProgress,
   calcStreak,
   calcSubjectProgress,
-  isWeakPoint,
 } from "./progress";
 
 describe("calcSubjectProgress", () => {
   it("returns 0 rates and null sub-rates for empty input", () => {
-    const p = calcSubjectProgress({ nodes: [], knowledgePoints: [], files: [] });
+    const p = calcSubjectProgress({ nodes: [], files: [] });
     expect(p.completionRate).toBe(0);
     expect(p.nodeRate).toBeNull();
-    expect(p.knowledgeRate).toBeNull();
     expect(p.fileRate).toBeNull();
   });
 
-  it("counts completed nodes, mastered knowledge, completed + key-archive files", () => {
+  it("counts completed nodes and completed + key-archive files", () => {
     const p = calcSubjectProgress({
       nodes: [
         { status: "COMPLETED" },
         { status: "LEARNING" },
         { status: "NOT_STARTED" },
-      ],
-      knowledgePoints: [
-        { stage: "MASTERED", difficulty: "EASY" },
-        { stage: "LEARNING", difficulty: "MEDIUM" },
       ],
       files: [
         { status: "COMPLETED" },
@@ -33,7 +27,6 @@ describe("calcSubjectProgress", () => {
       ],
     });
     expect(p.completedNodes).toBe(1);
-    expect(p.masteredKnowledge).toBe(1);
     expect(p.completedFiles).toBe(2);
     // 完成率只算节点：1 完成节点 / 3 节点 = 33%
     expect(p.completionRate).toBe(33);
@@ -42,27 +35,19 @@ describe("calcSubjectProgress", () => {
   it("rounds completion rate to integer", () => {
     const p = calcSubjectProgress({
       nodes: [{ status: "COMPLETED" }],
-      knowledgePoints: [
-        { stage: "MASTERED", difficulty: "EASY" },
-        { stage: "LEARNING", difficulty: "EASY" },
-        { stage: "LEARNING", difficulty: "EASY" },
-      ],
       files: [],
     });
     expect(p.completionRate).toBe(100); // 只算节点：1/1
     expect(p.nodeRate).toBe(100);
-    expect(p.knowledgeRate).toBe(33); // 1/3 rounds to 33
   });
 
   it("keeps empty categories as null sub-rates", () => {
     const p = calcSubjectProgress({
       nodes: [],
-      knowledgePoints: [{ stage: "MASTERED", difficulty: "EASY" }],
-      files: [],
+      files: [{ status: "COMPLETED" }],
     });
     expect(p.nodeRate).toBeNull();
-    expect(p.fileRate).toBeNull();
-    expect(p.knowledgeRate).toBe(100);
+    expect(p.fileRate).toBe(100);
     expect(p.completionRate).toBe(0); // 无节点 → 完成率 0
   });
 });
@@ -71,7 +56,6 @@ describe("calcGlobalProgress", () => {
   it("sums counts and computes weighted completion rate", () => {
     const a = calcSubjectProgress({
       nodes: [{ status: "COMPLETED" }],
-      knowledgePoints: [],
       files: [],
     });
     const b = calcSubjectProgress({
@@ -80,7 +64,6 @@ describe("calcGlobalProgress", () => {
         { status: "NOT_STARTED" },
         { status: "NOT_STARTED" },
       ],
-      knowledgePoints: [],
       files: [],
     });
     const g = calcGlobalProgress([
@@ -97,23 +80,6 @@ describe("calcGlobalProgress", () => {
     const g = calcGlobalProgress([]);
     expect(g.completionRate).toBe(0);
     expect(g.totalDurationMinutes).toBe(0);
-  });
-});
-
-describe("isWeakPoint", () => {
-  it("flags learning and review stages", () => {
-    expect(isWeakPoint({ stage: "LEARNING", difficulty: "EASY" })).toBe(true);
-    expect(isWeakPoint({ stage: "REVIEW", difficulty: "EASY" })).toBe(true);
-  });
-
-  it("flags hard non-mastered", () => {
-    expect(isWeakPoint({ stage: "NOT_STARTED", difficulty: "HARD" })).toBe(true);
-  });
-
-  it("does not flag mastered or easy not-started", () => {
-    expect(isWeakPoint({ stage: "MASTERED", difficulty: "EASY" })).toBe(false);
-    expect(isWeakPoint({ stage: "MASTERED", difficulty: "HARD" })).toBe(false);
-    expect(isWeakPoint({ stage: "NOT_STARTED", difficulty: "EASY" })).toBe(false);
   });
 });
 

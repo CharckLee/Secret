@@ -1,21 +1,12 @@
-import type {
-  CheckInStatus,
-  Difficulty,
-  FileStatus,
-  MasteryStage,
-  NodeStatus,
-} from "./index";
+import type { CheckInStatus, FileStatus, NodeStatus } from "./index";
 
 export interface SubjectProgressShape {
   totalNodes: number;
   completedNodes: number;
-  totalKnowledge: number;
-  masteredKnowledge: number;
   totalFiles: number;
   completedFiles: number;
   completionRate: number;
   nodeRate: number | null;
-  knowledgeRate: number | null;
   fileRate: number | null;
 }
 
@@ -33,8 +24,6 @@ export interface GlobalStats {
   completionRate: number;
   totalNodes: number;
   completedNodes: number;
-  totalKnowledge: number;
-  masteredKnowledge: number;
   totalFiles: number;
   completedFiles: number;
   totalDurationMinutes: number;
@@ -49,34 +38,10 @@ export interface StatsResponse {
     color: string;
     completionRate: number;
     nodeRate: number | null;
-    knowledgeRate: number | null;
     fileRate: number | null;
     totalDurationMinutes: number;
   }[];
   trend: { date: string; minutes: number }[];
-  mastery: { stage: MasteryStage; count: number }[];
-  weakPoints: {
-    id: string;
-    title: string;
-    stage: MasteryStage;
-    difficulty: Difficulty;
-    subject: { name: string; color: string };
-  }[];
-}
-
-export interface KnowledgePointItem {
-  id: string;
-  title: string;
-  content: string;
-  note: string;
-  difficulty: Difficulty;
-  stage: MasteryStage;
-  tags: string;
-  archived: boolean;
-  subjectId: string;
-  createdAt: string;
-  updatedAt: string;
-  subject?: { id: string; name: string; color: string };
 }
 
 export interface PathNodeItem {
@@ -88,7 +53,6 @@ export interface PathNodeItem {
   status: NodeStatus;
   parentId: string | null;
   subjectId: string;
-  knowledgePoints?: { id: string; title: string }[];
   files?: { id: string; filename: string; storedPath?: string }[];
 }
 
@@ -99,10 +63,8 @@ export interface CheckInItem {
   status: CheckInStatus;
   note: string;
   subjectId: string;
-  knowledgePointId: string | null;
   pathNodeId: string | null;
   subject?: { id: string; name: string; color: string };
-  knowledgePoint?: { id: string; title: string } | null;
   pathNode?: { id: string; title: string } | null;
 }
 
@@ -114,10 +76,8 @@ export interface ReviewItem {
   plan: string;
   difficulty: string;
   subjectId: string | null;
-  knowledgePointId: string | null;
   pathNodeId: string | null;
   subject?: { id: string; name: string; color: string } | null;
-  knowledgePoint?: { id: string; title: string } | null;
   pathNode?: { id: string; title: string } | null;
 }
 
@@ -142,7 +102,6 @@ export interface SubjectDetail {
   updatedAt: string;
   progress: SubjectProgressShape;
   totalDurationMinutes: number;
-  knowledgePoints: KnowledgePointItem[];
   pathNodes: PathNodeItem[];
   files: StudyFileItem[];
   checkIns: CheckInItem[];

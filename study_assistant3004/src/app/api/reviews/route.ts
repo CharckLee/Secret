@@ -8,7 +8,6 @@ export async function GET(request: Request) {
     where,
     include: {
       subject: { select: { id: true, name: true, color: true } },
-      knowledgePoint: { select: { id: true, title: true } },
       pathNode: { select: { id: true, title: true } },
     },
     orderBy: { date: "desc" },
@@ -32,10 +31,6 @@ export async function POST(request: Request) {
       difficulty: typeof body.difficulty === "string" ? body.difficulty : "",
       subjectId:
         typeof body.subjectId === "string" ? body.subjectId : null,
-      knowledgePointId:
-        typeof body.knowledgePointId === "string"
-          ? body.knowledgePointId
-          : null,
       pathNodeId:
         typeof body.pathNodeId === "string" ? body.pathNodeId : null,
     },

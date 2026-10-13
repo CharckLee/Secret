@@ -31,10 +31,8 @@ export function CheckInForm({
   const [durationMinutes, setDurationMinutes] = useState("30");
   const [status, setStatus] = useState<CheckInStatus>("PARTIAL");
   const [nodeId, setNodeId] = useState("");
-  const [kpId, setKpId] = useState("");
   const [note, setNote] = useState("");
   const [nodes, setNodes] = useState<Option[]>([]);
-  const [kps, setKps] = useState<Option[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +42,6 @@ export function CheckInForm({
       setDurationMinutes("30");
       setStatus("PARTIAL");
       setNodeId("");
-      setKpId("");
       setNote("");
       setError(null);
     }
@@ -53,19 +50,12 @@ export function CheckInForm({
   useEffect(() => {
     if (!subjectId) {
       setNodes([]);
-      setKps([]);
       return;
     }
     fetch(`/api/path-nodes?subjectId=${subjectId}`, { cache: "no-store" })
       .then((r) => r.json())
       .then(setNodes)
       .catch(() => setNodes([]));
-    fetch(`/api/knowledge-points?subjectId=${subjectId}`, {
-      cache: "no-store",
-    })
-      .then((r) => r.json())
-      .then(setKps)
-      .catch(() => setKps([]));
   }, [subjectId]);
 
   async function submit(e: React.FormEvent) {
@@ -80,7 +70,6 @@ export function CheckInForm({
           durationMinutes: Number(durationMinutes) || 0,
           status,
           pathNodeId: nodeId || null,
-          knowledgePointId: kpId || null,
           note,
         }),
       });
@@ -135,33 +124,18 @@ export function CheckInForm({
             ))}
           </Select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-sm text-slate-600">
-              学习节点（可选）
-            </label>
-            <Select value={nodeId} onChange={(e) => setNodeId(e.target.value)}>
-              <option value="">不绑定节点</option>
-              {nodes.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.title}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-slate-600">
-              知识点（可选）
-            </label>
-            <Select value={kpId} onChange={(e) => setKpId(e.target.value)}>
-              <option value="">不绑定知识点</option>
-              {kps.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.title}
-                </option>
-              ))}
-            </Select>
-          </div>
+        <div>
+          <label className="mb-1 block text-sm text-slate-600">
+            学习节点（可选）
+          </label>
+          <Select value={nodeId} onChange={(e) => setNodeId(e.target.value)}>
+            <option value="">不绑定节点</option>
+            {nodes.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.title}
+              </option>
+            ))}
+          </Select>
         </div>
         <div>
           <label className="mb-1 block text-sm text-slate-600">备注（可选）</label>

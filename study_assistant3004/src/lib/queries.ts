@@ -10,7 +10,6 @@ import {
 export async function getSubjectProgressRows() {
   const subjects = await prisma.subject.findMany({
     include: {
-      knowledgePoints: { select: { stage: true, difficulty: true } },
       pathNodes: { select: { status: true } },
       files: { where: { pathNodes: { some: {} } }, select: { status: true } },
       checkIns: { select: { date: true, durationMinutes: true } },
@@ -21,7 +20,6 @@ export async function getSubjectProgressRows() {
   return subjects.map((s) => {
     const progress = calcSubjectProgress({
       nodes: s.pathNodes,
-      knowledgePoints: s.knowledgePoints,
       files: s.files,
     });
     const totalDurationMinutes = s.checkIns.reduce(
@@ -49,11 +47,9 @@ export async function getSubjectDetail(id: string) {
   const subject = await prisma.subject.findUnique({
     where: { id },
     include: {
-      knowledgePoints: { orderBy: { createdAt: "desc" } },
       pathNodes: {
         orderBy: { order: "asc" },
         include: {
-          knowledgePoints: { select: { id: true, title: true } },
           files: { select: { id: true, filename: true, storedPath: true } },
         },
       },
@@ -65,7 +61,6 @@ export async function getSubjectDetail(id: string) {
       checkIns: {
         orderBy: { date: "desc" },
         include: {
-          knowledgePoint: { select: { id: true, title: true } },
           pathNode: { select: { id: true, title: true } },
         },
       },
@@ -75,7 +70,6 @@ export async function getSubjectDetail(id: string) {
 
   const progress = calcSubjectProgress({
     nodes: subject.pathNodes,
-    knowledgePoints: subject.knowledgePoints,
     files: subject.files,
   });
   const totalDurationMinutes = subject.checkIns.reduce(
@@ -85,7 +79,7 @@ export async function getSubjectDetail(id: string) {
   return { ...subject, progress, totalDurationMinutes };
 }
 
-/** 首页总览统计（全局进度 + 趋势 + 掌握度 + 薄弱点） */
+/** 首页总览统计（全局进度 + 趋势） */
 export async function getHomeStats() {
   const subjects = await getSubjectProgressRows();
   const global = calcGlobalProgress(
@@ -121,33 +115,6 @@ export async function getHomeStats() {
     trend.push({ date: key, minutes: minutesByDay.get(key) ?? 0 });
   }
 
-  const masteryRows = await prisma.knowledgePoint.groupBy({
-    by: ["stage"],
-    _count: { _all: true },
-  });
-  const mastery = masteryRows.map((m) => ({
-    stage: m.stage,
-    count: m._count._all,
-  }));
-
-  const weakPoints = await prisma.knowledgePoint.findMany({
-    where: {
-      OR: [
-        { stage: "LEARNING" },
-        { stage: "REVIEW" },
-        { stage: { not: "MASTERED" }, difficulty: "HARD" },
-      ],
-    },
-    select: {
-      id: true,
-      title: true,
-      stage: true,
-      difficulty: true,
-      subject: { select: { name: true, color: true } },
-    },
-    take: 20,
-  });
-
   return {
     global: { ...global, streakDays },
     subjects: subjects.map((s) => ({
@@ -156,12 +123,9 @@ export async function getHomeStats() {
       color: s.color,
       completionRate: s.progress.completionRate,
       nodeRate: s.progress.nodeRate,
-      knowledgeRate: s.progress.knowledgeRate,
       fileRate: s.progress.fileRate,
       totalDurationMinutes: s.totalDurationMinutes,
     })),
     trend,
-    mastery,
-    weakPoints,
   };
 }

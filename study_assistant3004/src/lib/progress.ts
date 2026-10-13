@@ -1,31 +1,22 @@
-import type {
-  Difficulty,
-  FileStatus,
-  MasteryStage,
-  NodeStatus,
-} from "@/types";
+import type { FileStatus, NodeStatus } from "@/types";
 
 export interface ProgressCounts {
   totalNodes: number;
   completedNodes: number;
-  totalKnowledge: number;
-  masteredKnowledge: number;
   totalFiles: number;
   completedFiles: number;
 }
 
 export interface SubjectProgress extends ProgressCounts {
-  /** 综合完成率 0-100，= (已完成节点 + 已掌握知识点 + 已完成文件) / 总项目数 */
+  /** 综合完成率 0-100，只由节点决定 */
   completionRate: number;
   /** 各自为 0 时返回 null，不参与平均 */
   nodeRate: number | null;
-  knowledgeRate: number | null;
   fileRate: number | null;
 }
 
 export interface ProgressInput {
   nodes: { status: NodeStatus }[];
-  knowledgePoints: { stage: MasteryStage; difficulty: Difficulty }[];
   files: { status: FileStatus }[];
 }
 
@@ -33,31 +24,24 @@ export function calcSubjectProgress(input: ProgressInput): SubjectProgress {
   const completedNodes = input.nodes.filter(
     (n) => n.status === "COMPLETED",
   ).length;
-  const masteredKnowledge = input.knowledgePoints.filter(
-    (k) => k.stage === "MASTERED",
-  ).length;
   const completedFiles = input.files.filter(
     (f) => f.status === "COMPLETED" || f.status === "KEY_ARCHIVE",
   ).length;
 
   const totalNodes = input.nodes.length;
-  const totalKnowledge = input.knowledgePoints.length;
   const totalFiles = input.files.length;
 
-  // 完成率只由节点决定（知识点、文件不计入进度）
+  // 完成率只由节点决定（文件不计入进度）
   const completionRate =
     totalNodes === 0 ? 0 : Math.round((completedNodes / totalNodes) * 100);
 
   return {
     totalNodes,
     completedNodes,
-    totalKnowledge,
-    masteredKnowledge,
     totalFiles,
     completedFiles,
     completionRate,
     nodeRate: rate(completedNodes, totalNodes),
-    knowledgeRate: rate(masteredKnowledge, totalKnowledge),
     fileRate: rate(completedFiles, totalFiles),
   };
 }
@@ -79,8 +63,6 @@ export function calcGlobalProgress(
     (acc, s) => ({
       totalNodes: acc.totalNodes + s.progress.totalNodes,
       completedNodes: acc.completedNodes + s.progress.completedNodes,
-      totalKnowledge: acc.totalKnowledge + s.progress.totalKnowledge,
-      masteredKnowledge: acc.masteredKnowledge + s.progress.masteredKnowledge,
       totalFiles: acc.totalFiles + s.progress.totalFiles,
       completedFiles: acc.completedFiles + s.progress.completedFiles,
       totalDurationMinutes: acc.totalDurationMinutes + s.durationMinutes,
@@ -88,8 +70,6 @@ export function calcGlobalProgress(
     {
       totalNodes: 0,
       completedNodes: 0,
-      totalKnowledge: 0,
-      masteredKnowledge: 0,
       totalFiles: 0,
       completedFiles: 0,
       totalDurationMinutes: 0,
@@ -106,22 +86,6 @@ export function calcGlobalProgress(
     ...sums,
     completionRate,
   };
-}
-
-/** 薄弱点判定：学习中/待复习，或高难度且未掌握 */
-export function isWeakPoint(kp: {
-  stage: MasteryStage;
-  difficulty: Difficulty;
-}): boolean {
-  if (kp.stage === "LEARNING" || kp.stage === "REVIEW") return true;
-  if (kp.difficulty === "HARD" && kp.stage !== "MASTERED") return true;
-  return false;
-}
-
-export function filterWeakPoints<
-  T extends { stage: MasteryStage; difficulty: Difficulty },
->(knowledgePoints: T[]): T[] {
-  return knowledgePoints.filter(isWeakPoint);
 }
 
 export function dateKey(d: Date): string {

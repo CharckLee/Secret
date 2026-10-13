@@ -12,15 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card } from "@/components/ui/Card";
-import { STAGE_LABELS } from "@/types";
 import type { StatsResponse } from "@/types/api";
-
-const MASTERY_COLORS: Record<string, string> = {
-  NOT_STARTED: "#cbd5e1",
-  LEARNING: "#f59e0b",
-  MASTERED: "#10b981",
-  REVIEW: "#f43f5e",
-};
 
 export function ChartsSection({ stats }: { stats: StatsResponse }) {
   const subjectData = stats.subjects.map((s) => ({
@@ -28,22 +20,16 @@ export function ChartsSection({ stats }: { stats: StatsResponse }) {
     value: s.totalDurationMinutes,
     color: s.color,
   }));
-  const masteryData = stats.mastery.map((m) => ({
-    name: STAGE_LABELS[m.stage],
-    value: m.count,
-    stage: m.stage,
-  }));
   const trendData = stats.trend.map((t) => ({
     label: t.date.slice(5),
     minutes: t.minutes,
   }));
 
   const hasSubjectData = subjectData.some((s) => s.value > 0);
-  const hasMasteryData = masteryData.some((m) => m.value > 0);
   const hasTrendData = trendData.some((t) => t.minutes > 0);
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <ChartCard title="各学科学习时长占比">
         {hasSubjectData ? (
           <ResponsiveContainer width="100%" height={200}>
@@ -87,33 +73,6 @@ export function ChartsSection({ stats }: { stats: StatsResponse }) {
                 strokeWidth={2}
               />
             </AreaChart>
-          </ResponsiveContainer>
-        ) : (
-          <ChartEmpty />
-        )}
-      </ChartCard>
-
-      <ChartCard title="知识点掌握度分布">
-        {hasMasteryData ? (
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={masteryData}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={45}
-                outerRadius={80}
-                paddingAngle={2}
-              >
-                {masteryData.map((m) => (
-                  <Cell
-                    key={m.stage}
-                    fill={MASTERY_COLORS[m.stage] ?? "#94a3b8"}
-                  />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
           </ResponsiveContainer>
         ) : (
           <ChartEmpty />
