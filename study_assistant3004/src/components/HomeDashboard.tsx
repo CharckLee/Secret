@@ -155,7 +155,7 @@ export function HomeDashboard({
                 </div>
                 <div className="mt-3 space-y-1 text-xs text-slate-500">
                   <p>
-                    已完成节点 {s.progress.completedNodes}/{s.progress.totalNodes}
+                    已学 {s.progress.completedLeaves}/{s.progress.totalLeaves} 节
                     {" · "}归档完成文件 {s.progress.completedFiles}
                   </p>
                   <p className="text-slate-400">

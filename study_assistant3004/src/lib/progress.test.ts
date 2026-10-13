@@ -9,36 +9,61 @@ describe("calcSubjectProgress", () => {
   it("returns 0 rates and null sub-rates for empty input", () => {
     const p = calcSubjectProgress({ nodes: [], files: [] });
     expect(p.completionRate).toBe(0);
-    expect(p.nodeRate).toBeNull();
+    expect(p.leafRate).toBeNull();
     expect(p.fileRate).toBeNull();
   });
 
-  it("counts completed nodes and completed + key-archive files", () => {
+  it("counts only leaf nodes as sections", () => {
     const p = calcSubjectProgress({
       nodes: [
-        { status: "COMPLETED" },
-        { status: "LEARNING" },
-        { status: "NOT_STARTED" },
+        { id: "a", status: "COMPLETED", parentId: null },
+        { id: "a1", status: "COMPLETED", parentId: "a" },
+        { id: "a2", status: "NOT_STARTED", parentId: "a" },
       ],
+      files: [],
+    });
+    expect(p.totalLeaves).toBe(2);
+    expect(p.completedLeaves).toBe(1);
+    expect(p.completionRate).toBe(50);
+  });
+
+  it("does not count a finished parent as a finished section", () => {
+    const p = calcSubjectProgress({
+      nodes: [
+        { id: "a", status: "COMPLETED", parentId: null },
+        { id: "a1", status: "NOT_STARTED", parentId: "a" },
+      ],
+      files: [],
+    });
+    expect(p.completedLeaves).toBe(0);
+    expect(p.completionRate).toBe(0);
+  });
+
+  it("rounds the completion rate to an integer", () => {
+    const p = calcSubjectProgress({
+      nodes: [
+        { id: "a", status: "COMPLETED", parentId: null },
+        { id: "b", status: "NOT_STARTED", parentId: null },
+        { id: "c", status: "NOT_STARTED", parentId: null },
+      ],
+      files: [],
+    });
+    expect(p.completionRate).toBe(33);
+    expect(p.leafRate).toBe(33);
+  });
+
+  it("counts completed and key-archive files", () => {
+    const p = calcSubjectProgress({
+      nodes: [{ id: "a", status: "NOT_STARTED", parentId: null }],
       files: [
         { status: "COMPLETED" },
         { status: "KEY_ARCHIVE" },
         { status: "NOT_STARTED" },
       ],
     });
-    expect(p.completedNodes).toBe(1);
     expect(p.completedFiles).toBe(2);
-    // 完成率只算节点：1 完成节点 / 3 节点 = 33%
-    expect(p.completionRate).toBe(33);
-  });
-
-  it("rounds completion rate to integer", () => {
-    const p = calcSubjectProgress({
-      nodes: [{ status: "COMPLETED" }],
-      files: [],
-    });
-    expect(p.completionRate).toBe(100); // 只算节点：1/1
-    expect(p.nodeRate).toBe(100);
+    expect(p.totalFiles).toBe(3);
+    expect(p.fileRate).toBe(67);
   });
 
   it("keeps empty categories as null sub-rates", () => {
@@ -46,23 +71,23 @@ describe("calcSubjectProgress", () => {
       nodes: [],
       files: [{ status: "COMPLETED" }],
     });
-    expect(p.nodeRate).toBeNull();
+    expect(p.leafRate).toBeNull();
     expect(p.fileRate).toBe(100);
-    expect(p.completionRate).toBe(0); // 无节点 → 完成率 0
+    expect(p.completionRate).toBe(0);
   });
 });
 
 describe("calcGlobalProgress", () => {
-  it("sums counts and computes weighted completion rate", () => {
+  it("sums leaf counts and computes the weighted completion rate", () => {
     const a = calcSubjectProgress({
-      nodes: [{ status: "COMPLETED" }],
+      nodes: [{ id: "a", status: "COMPLETED", parentId: null }],
       files: [],
     });
     const b = calcSubjectProgress({
       nodes: [
-        { status: "NOT_STARTED" },
-        { status: "NOT_STARTED" },
-        { status: "NOT_STARTED" },
+        { id: "b", status: "NOT_STARTED", parentId: null },
+        { id: "b1", status: "NOT_STARTED", parentId: "b" },
+        { id: "b2", status: "NOT_STARTED", parentId: "b" },
       ],
       files: [],
     });
@@ -70,10 +95,10 @@ describe("calcGlobalProgress", () => {
       { progress: a, durationMinutes: 30 },
       { progress: b, durationMinutes: 20 },
     ]);
-    expect(g.completedNodes).toBe(1);
-    expect(g.totalNodes).toBe(4);
+    expect(g.completedLeaves).toBe(1);
+    expect(g.totalLeaves).toBe(3);
     expect(g.totalDurationMinutes).toBe(50);
-    expect(g.completionRate).toBe(25); // 1/4
+    expect(g.completionRate).toBe(33);
   });
 
   it("returns 0 for empty subjects", () => {

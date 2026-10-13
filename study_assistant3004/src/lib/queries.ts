@@ -11,7 +11,7 @@ import {
 export async function getSubjectProgressRows() {
   const subjects = await prisma.subject.findMany({
     include: {
-      pathNodes: { select: { status: true } },
+      pathNodes: { select: { id: true, status: true, parentId: true } },
       files: { where: { pathNodes: { some: {} } }, select: { status: true } },
       checkIns: { select: { date: true, durationMinutes: true } },
     },
@@ -123,7 +123,7 @@ export async function getHomeStats() {
       name: s.name,
       color: s.color,
       completionRate: s.progress.completionRate,
-      nodeRate: s.progress.nodeRate,
+      leafRate: s.progress.leafRate,
       fileRate: s.progress.fileRate,
       totalDurationMinutes: s.totalDurationMinutes,
     })),

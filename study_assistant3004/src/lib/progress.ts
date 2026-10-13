@@ -1,47 +1,60 @@
 import type { FileStatus, NodeStatus } from "@/types";
 
 export interface ProgressCounts {
-  totalNodes: number;
-  completedNodes: number;
+  /** 叶子节点数 —— 也就是可学的"节"总数 */
+  totalLeaves: number;
+  /** 已完成的叶子数 */
+  completedLeaves: number;
   totalFiles: number;
   completedFiles: number;
 }
 
 export interface SubjectProgress extends ProgressCounts {
-  /** 综合完成率 0-100，只由节点决定 */
+  /** 综合完成率 0-100，按"节"（叶子节点）计算 */
   completionRate: number;
   /** 各自为 0 时返回 null，不参与平均 */
-  nodeRate: number | null;
+  leafRate: number | null;
   fileRate: number | null;
 }
 
 export interface ProgressInput {
-  nodes: { status: NodeStatus }[];
+  nodes: { id: string; status: NodeStatus; parentId: string | null }[];
   files: { status: FileStatus }[];
 }
 
+/** 叶子节点 = 没有子节点的节点 = 真正可学的"节"（父章节只是目录） */
+function leafNodes<T extends { id: string; parentId: string | null }>(
+  nodes: T[],
+): T[] {
+  const parentIds = new Set(
+    nodes.map((n) => n.parentId).filter((id): id is string => id !== null),
+  );
+  return nodes.filter((n) => !parentIds.has(n.id));
+}
+
 export function calcSubjectProgress(input: ProgressInput): SubjectProgress {
-  const completedNodes = input.nodes.filter(
+  const leaves = leafNodes(input.nodes);
+  const completedLeaves = leaves.filter(
     (n) => n.status === "COMPLETED",
   ).length;
   const completedFiles = input.files.filter(
     (f) => f.status === "COMPLETED" || f.status === "KEY_ARCHIVE",
   ).length;
 
-  const totalNodes = input.nodes.length;
+  const totalLeaves = leaves.length;
   const totalFiles = input.files.length;
 
-  // 完成率只由节点决定（文件不计入进度）
+  // 完成率只按"节"算（文件不计入进度）
   const completionRate =
-    totalNodes === 0 ? 0 : Math.round((completedNodes / totalNodes) * 100);
+    totalLeaves === 0 ? 0 : Math.round((completedLeaves / totalLeaves) * 100);
 
   return {
-    totalNodes,
-    completedNodes,
+    totalLeaves,
+    completedLeaves,
     totalFiles,
     completedFiles,
     completionRate,
-    nodeRate: rate(completedNodes, totalNodes),
+    leafRate: rate(completedLeaves, totalLeaves),
     fileRate: rate(completedFiles, totalFiles),
   };
 }
@@ -61,26 +74,26 @@ export function calcGlobalProgress(
 ): GlobalProgress {
   const sums = subjects.reduce(
     (acc, s) => ({
-      totalNodes: acc.totalNodes + s.progress.totalNodes,
-      completedNodes: acc.completedNodes + s.progress.completedNodes,
+      totalLeaves: acc.totalLeaves + s.progress.totalLeaves,
+      completedLeaves: acc.completedLeaves + s.progress.completedLeaves,
       totalFiles: acc.totalFiles + s.progress.totalFiles,
       completedFiles: acc.completedFiles + s.progress.completedFiles,
       totalDurationMinutes: acc.totalDurationMinutes + s.durationMinutes,
     }),
     {
-      totalNodes: 0,
-      completedNodes: 0,
+      totalLeaves: 0,
+      completedLeaves: 0,
       totalFiles: 0,
       completedFiles: 0,
       totalDurationMinutes: 0,
     },
   );
 
-  // 完成率只由节点决定
+  // 完成率只按"节"算
   const completionRate =
-    sums.totalNodes === 0
+    sums.totalLeaves === 0
       ? 0
-      : Math.round((sums.completedNodes / sums.totalNodes) * 100);
+      : Math.round((sums.completedLeaves / sums.totalLeaves) * 100);
 
   return {
     ...sums,

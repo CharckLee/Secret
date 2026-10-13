@@ -47,7 +47,7 @@ export async function GET() {
       name: s.name,
       color: s.color,
       completionRate: s.progress.completionRate,
-      nodeRate: s.progress.nodeRate,
+      leafRate: s.progress.leafRate,
       fileRate: s.progress.fileRate,
       totalDurationMinutes: s.totalDurationMinutes,
     })),

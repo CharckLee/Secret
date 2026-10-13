@@ -1,12 +1,13 @@
 import type { CheckInStatus, FileStatus, NodeStatus } from "./index";
 
 export interface SubjectProgressShape {
-  totalNodes: number;
-  completedNodes: number;
+  /** 叶子节点数 = 可学的"节"总数 */
+  totalLeaves: number;
+  completedLeaves: number;
   totalFiles: number;
   completedFiles: number;
   completionRate: number;
-  nodeRate: number | null;
+  leafRate: number | null;
   fileRate: number | null;
 }
 
@@ -22,8 +23,8 @@ export interface SubjectRow {
 
 export interface GlobalStats {
   completionRate: number;
-  totalNodes: number;
-  completedNodes: number;
+  totalLeaves: number;
+  completedLeaves: number;
   totalFiles: number;
   completedFiles: number;
   totalDurationMinutes: number;
@@ -37,7 +38,7 @@ export interface StatsResponse {
     name: string;
     color: string;
     completionRate: number;
-    nodeRate: number | null;
+    leafRate: number | null;
     fileRate: number | null;
     totalDurationMinutes: number;
   }[];
