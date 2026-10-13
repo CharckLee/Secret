@@ -37,6 +37,7 @@ yarn-error.log*
 # local data (sqlite db + uploaded files)
 /prisma/dev.db
 /prisma/dev.db-journal
+/prisma/dev.db.bak*
 /data/uploads/
 
 # vercel
