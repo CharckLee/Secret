@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupNodesBySubject } from "./path";
+import { buildNodeDeleteWarning, groupNodesBySubject } from "./path";
 
 describe("groupNodesBySubject", () => {
   it("groups nodes under their subject", () => {
@@ -82,5 +82,75 @@ describe("groupNodesBySubject", () => {
 
   it("returns an empty list for empty input", () => {
     expect(groupNodesBySubject([], [])).toEqual([]);
+  });
+});
+
+describe("buildNodeDeleteWarning", () => {
+  it("mentions the node title and the child count", () => {
+    const w = buildNodeDeleteWarning({
+      title: "第一章",
+      childCount: 3,
+      fileNames: [],
+    });
+    expect(w).toContain("第一章");
+    expect(w).toContain("3 个子节点");
+  });
+
+  it("omits the child sentence when there are no children", () => {
+    const w = buildNodeDeleteWarning({
+      title: "t",
+      childCount: 0,
+      fileNames: [],
+    });
+    expect(w).not.toContain("子节点");
+  });
+
+  it("says bound files go to the unarchived area by default", () => {
+    const w = buildNodeDeleteWarning({
+      title: "t",
+      childCount: 0,
+      fileNames: ["a.jpg", "b.jpg"],
+    });
+    expect(w).toContain("2 个文件");
+    expect(w).toContain("未归档");
+  });
+
+  it("does not claim the files will be deleted (deletion is a separate choice)", () => {
+    const w = buildNodeDeleteWarning({
+      title: "t",
+      childCount: 0,
+      fileNames: ["x.jpg"],
+    });
+    expect(w).not.toContain("无法恢复");
+  });
+
+  it("lists up to three file names and elides the rest", () => {
+    const w = buildNodeDeleteWarning({
+      title: "t",
+      childCount: 0,
+      fileNames: ["a.jpg", "b.jpg", "c.jpg", "d.jpg"],
+    });
+    expect(w).toContain("4 个文件");
+    expect(w).toContain("a.jpg、b.jpg、c.jpg");
+    expect(w).toContain("等");
+    expect(w).not.toContain("d.jpg");
+  });
+
+  it("says there are no bound files when the list is empty", () => {
+    const w = buildNodeDeleteWarning({
+      title: "t",
+      childCount: 0,
+      fileNames: [],
+    });
+    expect(w).toContain("没有绑定文件");
+  });
+
+  it("puts the title on the first line", () => {
+    const w = buildNodeDeleteWarning({
+      title: "微管",
+      childCount: 2,
+      fileNames: ["x.jpg"],
+    });
+    expect(w.split("\n")[0]).toContain("微管");
   });
 });

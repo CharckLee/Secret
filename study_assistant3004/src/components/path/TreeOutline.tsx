@@ -23,6 +23,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { buildNodeDeleteWarning } from "@/lib/path";
 import { useFilePreview } from "@/components/file/FilePreviewProvider";
 import { NODE_STATUS_LABELS } from "@/types";
 import type { NodeStatus } from "@/types";
@@ -90,6 +91,11 @@ export function TreeOutline({
   const [formOpen, setFormOpen] = useState(false);
   const [formNode, setFormNode] = useState<PathNodeItem | null>(null);
   const [formParentId, setFormParentId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    warning: string;
+    fileCount: number;
+  } | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -155,12 +161,38 @@ export function TreeOutline({
     patchStatus(id, "LEARNING");
   }
 
-  async function removeNode(id: string) {
-    if (!confirm("确定删除该节点？其子节点会一并删除。")) return;
+  /** 打开删除确认弹窗：文件删不删由用户在弹窗里当场选，不在这里决定 */
+  function removeNode(id: string) {
+    const removedIds = new Set([id, ...descendants(localNodes, id)]);
+    const title = localNodes.find((n) => n.id === id)?.title ?? "该节点";
+    const fileNames = localNodes
+      .filter((n) => removedIds.has(n.id))
+      .flatMap((n) => n.files ?? [])
+      .map((f) => f.filename);
+
+    setPendingDelete({
+      id,
+      warning: buildNodeDeleteWarning({
+        title,
+        childCount: removedIds.size - 1,
+        fileNames,
+      }),
+      fileCount: fileNames.length,
+    });
+  }
+
+  /** deleteFiles=false：文件转入未归档区；true：连同文件一起删除 */
+  async function confirmRemove(deleteFiles: boolean) {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
+    const removedIds = new Set([id, ...descendants(localNodes, id)]);
+    setPendingDelete(null);
     // 乐观更新：立即从树中移除该节点及其所有后代
-    const removed = new Set([id, ...descendants(localNodes, id)]);
-    setLocalNodes((prev) => prev.filter((n) => !removed.has(n.id)));
-    await apiFetch(`/api/path-nodes/${id}`, { method: "DELETE" }).catch(() => {});
+    setLocalNodes((prev) => prev.filter((n) => !removedIds.has(n.id)));
+    await apiFetch(
+      `/api/path-nodes/${id}${deleteFiles ? "?deleteFiles=true" : ""}`,
+      { method: "DELETE" },
+    ).catch(() => {});
     onChanged();
   }
 
@@ -227,6 +259,36 @@ export function TreeOutline({
           onChanged();
         }}
       />
+
+      <Modal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        title="删除学习节点"
+      >
+        {pendingDelete && (
+          <div className="space-y-4">
+            <p className="whitespace-pre-wrap text-sm text-slate-600">
+              {pendingDelete.warning}
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setPendingDelete(null)}
+              >
+                取消
+              </Button>
+              {pendingDelete.fileCount > 0 && (
+                <Button variant="danger" onClick={() => confirmRemove(true)}>
+                  连带删除文件
+                </Button>
+              )}
+              <Button onClick={() => confirmRemove(false)}>
+                {pendingDelete.fileCount > 0 ? "转入未归档并删除" : "删除节点"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

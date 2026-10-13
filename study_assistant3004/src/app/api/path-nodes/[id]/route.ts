@@ -78,12 +78,20 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const url = new URL(request.url);
+  // 默认只删节点：绑定文件失去引用后进入未归档区（记录与磁盘文件都保留）
+  const deleteFiles = url.searchParams.get("deleteFiles") === "true";
 
-  // 收集该节点及所有后代，删除其绑定文件（数据库记录 + 磁盘文件）
+  if (!deleteFiles) {
+    await prisma.pathNode.delete({ where: { id } });
+    return Response.json({ ok: true, deletedFiles: 0 });
+  }
+
+  // 用户选择连带删除：文件记录与磁盘文件一并清理
   const nodeIds = await collectDescendantIds(id);
   const files = await prisma.studyFile.findMany({
     where: { pathNodes: { some: { id: { in: nodeIds } } } },
@@ -100,5 +108,5 @@ export async function DELETE(
     await Promise.all(files.map((f) => unlink(f.storedPath).catch(() => {})));
   }
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, deletedFiles: files.length });
 }
