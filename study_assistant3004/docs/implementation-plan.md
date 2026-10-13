@@ -2,7 +2,7 @@
 
 > 本文是 `docs/architecture-review.md` 的执行版：评估报告给出"哪里错了"，这份计划给出"具体改什么、按什么顺序、怎么验收"。
 >
-> **状态：第 1、2、3 轮已完成**（commit `c07cdbb`、`d257c06`、`e6e897f`）。后续每轮仍需单独批准后才动手。
+> **状态：第 1–4 轮已完成**（commit `c07cdbb`、`d257c06`、`e6e897f`、`530e25e`）。只剩第 5 轮（AI 视觉），开工前需先验证接口格式。
 >
 > 每轮格式：**要改的文件 → 每个文件改什么 → 验收方式 → 风险**。
 
@@ -201,12 +201,18 @@
 
 ---
 
-## 第 4 轮 · gitignore + lint
+## 第 4 轮 · gitignore + lint ✅ 已完成
+
+> **验收（commit `530e25e`）**：`npm run lint` **从 12 problems 清到 0**（exit 0）· `tsc` exit 0 · vitest **64 绿** · `next build` 成功 · 4 个页面 200 · `smoke-progress.mjs` 实跑通过 · 数据零变化
+>
+> **根 `.gitignore`**：`Secret/`（第 4 行）、`SKILLS/`、`minimall3002/`、`finance.cli8501/`、`Cinema-DNA/` 全部命中；已跟踪的 `study_assistant3004` / `paper_assistant3003` 未受影响。`git status` 不再出现这些目录。
+>
+> **lint 修法**：11 个 `react-hooks/set-state-in-effect` 用两种官方模式消除 —— ①「渲染期调整 state」（`if (dep !== prevDep) { setPrevDep(dep); ... }`）用于表单打开重置与 props→state 同步；② `queueMicrotask` 用于 `useApi` 的加载态（保留行为同时避开 effect 同步路径）。另修 `smoke-progress.mjs` 的 unused var，并同步了它因口径改名而过时的字段名。
 
 | # | 文件 | 改什么 |
 |---|---|---|
-| 1 | `D:\AI Vibecoding\.gitignore` | 补 `Secret/`、`SKILLS/`、`minimall3002/`、`finance.cli8501/`、`Cinema-DNA/`、`search_essay*` 等忽略规则。**只加规则，不动已有内容**；该文件在工作区外 → **需要提权** |
-| 2 | 8 个文件 | 修 12 个 `react-hooks/set-state-in-effect` + 1 个 unused var。纯前端重构，**不改业务行为** |
+| 1 | `D:\AI Vibecoding\.gitignore` | 补 `Secret/`、`SKILLS/`、`minimall3002/`、`finance.cli8501/`、`Cinema-DNA/` 忽略规则（**只加规则，不动已有内容**；工作区外 → 已提权写入） |
+| 2 | 8 个文件 | 修 11 个 `react-hooks/set-state-in-effect` + 1 个 unused var |
 
 ### 验收
 
