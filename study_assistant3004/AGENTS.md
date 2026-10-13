@@ -7,3 +7,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## 提交策略（本项目）
+
+- `commit`：改动完成即直接提交，不必事前征求确认
+- `push`：每次必须单独征求同意
+- 删除文件 / 修改密钥 / 删除数据表：仍然事前必问
+
+（措辞待用户指定后替换 —— 当前为占位版本，规则本身已生效）
