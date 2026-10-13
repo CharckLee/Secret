@@ -96,6 +96,8 @@ export function TreeOutline({
     warning: string;
     fileCount: number;
   } | null>(null);
+  /** 被折叠的节点 id（默认全部展开） */
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -146,11 +148,30 @@ export function TreeOutline({
     onChanged();
   }
 
-  /** 点击节点：未开始 → 学习中（点击过即视为开始学习） */
-  function markLearning(id: string) {
-    const node = localNodes.find((n) => n.id === id);
-    if (!node || node.status !== "NOT_STARTED") return;
+  /** 显式"开始学习"：只有用户主动点按钮才会进入学习中状态 */
+  function startLearning(id: string) {
     patchStatus(id, "LEARNING");
+  }
+
+  function stopLearning(id: string) {
+    patchStatus(id, "NOT_STARTED");
+  }
+
+  /** 点标题只做展开 / 折叠，不再顺手改状态 */
+  function toggleExpand(id: string) {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  /** 笔记就地保存后同步本地树，避免整页重刷 */
+  function handleNoteSaved(id: string, note: string) {
+    setLocalNodes((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, note } : n)),
+    );
   }
 
   function markCompleted(id: string) {
@@ -212,7 +233,7 @@ export function TreeOutline({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">
-          拖拽 ≡ 排序 · 点击节点标题开始学习 · 点「完成」标记已学完
+          拖拽 ≡ 排序 · 点标题折叠 / 展开 · 点「开始学习」标记在学 · 点笔记即可直接编辑
         </p>
         <Button onClick={() => openAdd(null)}>＋ 新增章节</Button>
       </div>
@@ -235,12 +256,16 @@ export function TreeOutline({
               <SortableNode
                 key={node.id}
                 node={node}
-                onMarkLearning={markLearning}
+                collapsedIds={collapsedIds}
+                onToggleExpand={toggleExpand}
+                onStartLearning={startLearning}
+                onStopLearning={stopLearning}
                 onMarkCompleted={markCompleted}
                 onMarkIncomplete={markIncomplete}
                 onAddChild={openAdd}
                 onEdit={openEdit}
                 onDelete={removeNode}
+                onNoteSaved={handleNoteSaved}
               />
             ))}
           </SortableContext>
@@ -295,20 +320,28 @@ export function TreeOutline({
 
 function SortableNode({
   node,
-  onMarkLearning,
+  collapsedIds,
+  onToggleExpand,
+  onStartLearning,
+  onStopLearning,
   onMarkCompleted,
   onMarkIncomplete,
   onAddChild,
   onEdit,
   onDelete,
+  onNoteSaved,
 }: {
   node: NodeWithChildren;
-  onMarkLearning: (id: string) => void;
+  collapsedIds: Set<string>;
+  onToggleExpand: (id: string) => void;
+  onStartLearning: (id: string) => void;
+  onStopLearning: (id: string) => void;
   onMarkCompleted: (id: string) => void;
   onMarkIncomplete: (id: string) => void;
   onAddChild: (parentId: string) => void;
   onEdit: (node: PathNodeItem) => void;
   onDelete: (id: string) => void;
+  onNoteSaved: (id: string, note: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: node.id });
@@ -318,6 +351,8 @@ function SortableNode({
       : undefined,
     transition,
   };
+  const hasChildren = node.children.length > 0;
+  const collapsed = collapsedIds.has(node.id);
 
   return (
     <div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-40")}>
@@ -331,17 +366,53 @@ function SortableNode({
         >
           ≡
         </button>
+        <button
+          type="button"
+          onClick={() => onToggleExpand(node.id)}
+          disabled={!hasChildren}
+          aria-label={collapsed ? "展开子节点" : "折叠子节点"}
+          className={cn(
+            "w-4 shrink-0 text-xs",
+            hasChildren
+              ? "text-slate-400 hover:text-slate-700"
+              : "cursor-default text-transparent",
+          )}
+        >
+          {collapsed ? "▸" : "▾"}
+        </button>
         <Badge tone={STATUS_TONE[node.status]}>
           {NODE_STATUS_LABELS[node.status]}
         </Badge>
-        <button
-          type="button"
-          onClick={() => onMarkLearning(node.id)}
-          className="min-w-0 flex-1 truncate text-left text-sm text-slate-700 hover:text-blue-600"
-          title={node.status === "NOT_STARTED" ? "点击开始学习" : node.title}
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm",
+            node.status === "COMPLETED"
+              ? "text-slate-400 line-through"
+              : "text-slate-700",
+          )}
+          title={node.title}
         >
           {node.title}
-        </button>
+        </span>
+        {node.status === "LEARNING" ? (
+          <button
+            type="button"
+            onClick={() => onStopLearning(node.id)}
+            className="shrink-0 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700 hover:bg-amber-100"
+            title="取消「学习中」标记"
+          >
+            取消开始
+          </button>
+        ) : node.status === "NOT_STARTED" ? (
+          <button
+            type="button"
+            onClick={() => onStartLearning(node.id)}
+            className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-blue-50 hover:text-blue-700"
+            title="标记为学习中"
+          >
+            开始学习
+          </button>
+        ) : null}
         {node.status === "COMPLETED" ? (
           <button
             type="button"
@@ -386,14 +457,22 @@ function SortableNode({
           </button>
         </span>
       </div>
+
+      <NoteLine
+        nodeId={node.id}
+        note={node.note}
+        onSaved={(note) => onNoteSaved(node.id, note)}
+      />
+
       {node.files && node.files.length > 0 && (
-        <div className="ml-7 flex flex-wrap gap-1.5 pb-1">
+        <div className="ml-9 flex flex-wrap gap-1.5 pb-1">
           {node.files.map((f) => (
             <FileChip key={f.id} file={f} />
           ))}
         </div>
       )}
-      {node.children.length > 0 && (
+
+      {hasChildren && !collapsed && (
         <div className="ml-5 border-l border-slate-100 pl-2">
           <SortableContext
             items={node.children.map((c) => c.id)}
@@ -403,18 +482,89 @@ function SortableNode({
               <SortableNode
                 key={child.id}
                 node={child}
-                onMarkLearning={onMarkLearning}
+                collapsedIds={collapsedIds}
+                onToggleExpand={onToggleExpand}
+                onStartLearning={onStartLearning}
+                onStopLearning={onStopLearning}
                 onMarkCompleted={onMarkCompleted}
                 onMarkIncomplete={onMarkIncomplete}
                 onAddChild={onAddChild}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onNoteSaved={onNoteSaved}
               />
             ))}
           </SortableContext>
         </div>
       )}
     </div>
+  );
+}
+
+/** 节点行下方的笔记：平时显示摘要，点一下就地编辑，失焦即保存 */
+function NoteLine({
+  nodeId,
+  note,
+  onSaved,
+}: {
+  nodeId: string;
+  note: string;
+  onSaved: (note: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setEditing(false);
+    if (draft === note) return;
+    setSaving(true);
+    await apiFetch(`/api/path-nodes/${nodeId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ note: draft }),
+    }).catch(() => {});
+    setSaving(false);
+    onSaved(draft);
+  }
+
+  if (editing) {
+    const lineCount = draft.split("\n").length;
+    const estimated = Math.min(
+      12,
+      Math.max(2, lineCount + Math.ceil(draft.length / 60)),
+    );
+    return (
+      <div className="ml-9 mr-2 mt-0.5 pb-1">
+        <Textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
+          autoFocus
+          rows={estimated}
+          placeholder="写下这一节的要点…（失焦自动保存）"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setDraft(note);
+        setEditing(true);
+      }}
+      className={cn(
+        "ml-9 mr-2 mt-0.5 block max-w-[calc(100%-2.75rem)] truncate text-left text-xs",
+        note
+          ? "text-slate-500 hover:text-blue-600"
+          : "text-slate-300 hover:text-blue-600",
+        saving && "opacity-50",
+      )}
+      title={note || "添加笔记"}
+    >
+      {note ? `📝 ${note}` : "＋ 添加笔记"}
+    </button>
   );
 }
 

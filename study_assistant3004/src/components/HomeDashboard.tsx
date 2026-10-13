@@ -11,6 +11,7 @@ import { AiRecommendPanel } from "@/components/ai/AiRecommendPanel";
 import { ChartsSection } from "@/components/charts/ChartsSection";
 import { apiFetch } from "@/lib/api";
 import { formatMinutes } from "@/lib/utils";
+import type { ContinueItem, NodeStats } from "@/lib/path";
 import type { StatsResponse, SubjectRow } from "@/types/api";
 
 function shortDate(iso: string | null) {
@@ -22,9 +23,13 @@ function shortDate(iso: string | null) {
 export function HomeDashboard({
   initialSubjects,
   initialStats,
+  continueItems,
+  nodeStats,
 }: {
   initialSubjects: SubjectRow[];
   initialStats: StatsResponse;
+  continueItems: ContinueItem[];
+  nodeStats: NodeStats;
 }) {
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
@@ -35,8 +40,7 @@ export function HomeDashboard({
   }
 
   async function removeSubject(id: string) {
-    if (!confirm("确定删除该学科？其下知识点、路径、打卡、复盘将一并删除。"))
-      return;
+    if (!confirm("确定删除该学科？其下路径、打卡、复盘将一并删除。")) return;
     await apiFetch(`/api/subjects/${id}`, { method: "DELETE" }).catch(() => {});
     refresh();
   }
@@ -46,25 +50,49 @@ export function HomeDashboard({
 
   return (
     <div className="space-y-8">
+      {/* 打开就知道该学哪一节 */}
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-slate-800">继续学习</h2>
+        {continueItems.length === 0 ? (
+          <Card className="p-6 text-center text-sm text-slate-400">
+            所有学科的路径都已学完，或者还没有建立学习路径
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {continueItems.map((item) => (
+              <ContinueCard
+                key={item.subjectId}
+                item={item}
+                onChanged={refresh}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 节点维度统计：完全不依赖打卡 */}
       <Card className="p-6">
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-3xl font-semibold text-blue-600">
-              {stats.global.completionRate}%
+              {nodeStats.completedLeaves}
+              <span className="text-lg text-slate-400">
+                /{nodeStats.leaves}
+              </span>
             </p>
-            <p className="mt-1 text-sm text-slate-500">整体完成率</p>
+            <p className="mt-1 text-sm text-slate-500">已学 / 总节数</p>
           </div>
           <div>
             <p className="text-3xl font-semibold text-slate-800">
-              {formatMinutes(stats.global.totalDurationMinutes)}
+              {nodeStats.withNote}
             </p>
-            <p className="mt-1 text-sm text-slate-500">累计学习时长</p>
+            <p className="mt-1 text-sm text-slate-500">写过笔记的节点</p>
           </div>
           <div>
             <p className="text-3xl font-semibold text-emerald-600">
-              {stats.global.streakDays} 天
+              {stats.global.completionRate}%
             </p>
-            <p className="mt-1 text-sm text-slate-500">连续打卡</p>
+            <p className="mt-1 text-sm text-slate-500">整体完成率</p>
           </div>
         </div>
       </Card>
@@ -86,7 +114,7 @@ export function HomeDashboard({
       {list.length === 0 ? (
         <EmptyState
           title="还没有学科"
-          description="新建学科后即可搭建学习路径、沉淀知识点"
+          description="新建学科后即可搭建学习路径、沉淀笔记"
           action={
             <Button
               className="mt-2"
@@ -168,7 +196,7 @@ export function HomeDashboard({
         <QuickEntry
           href="/knowledge"
           title="知识仓库"
-          desc="知识点与标签检索"
+          desc="归档文件与未归档资料"
         />
         <QuickEntry href="/checkin" title="打卡复盘" desc="打卡与复盘记录" />
       </div>
@@ -184,6 +212,76 @@ export function HomeDashboard({
         onSaved={refresh}
       />
     </div>
+  );
+}
+
+/** 「继续学习」里的一条：学科路径 + 下一节 + 一步标记 */
+function ContinueCard({
+  item,
+  onChanged,
+}: {
+  item: ContinueItem;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function patch(status: "LEARNING" | "COMPLETED") {
+    setBusy(true);
+    await apiFetch(`/api/path-nodes/${item.nodeId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }).catch(() => {});
+    setBusy(false);
+    onChanged();
+  }
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-start gap-3">
+        <span
+          className="mt-1.5 h-3 w-3 shrink-0 rounded-full"
+          style={{ backgroundColor: item.subjectColor }}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-slate-400">
+            {item.subjectName}
+            {item.pathTitles.length > 0 && ` › ${item.pathTitles.join(" › ")}`}
+            {item.explicit && (
+              <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700">
+                正在学
+              </span>
+            )}
+          </p>
+          <p className="mt-0.5 truncate text-sm font-medium text-slate-800">
+            {item.nodeTitle}
+          </p>
+          {item.note && (
+            <p className="mt-1 line-clamp-2 text-xs text-slate-500">
+              {item.note}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {!item.explicit && (
+            <Button
+              variant="secondary"
+              className="px-3 py-1.5"
+              disabled={busy}
+              onClick={() => patch("LEARNING")}
+            >
+              标记在学
+            </Button>
+          )}
+          <Button
+            className="px-3 py-1.5"
+            disabled={busy}
+            onClick={() => patch("COMPLETED")}
+          >
+            学完这节
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }
 

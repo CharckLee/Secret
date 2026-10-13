@@ -28,10 +28,13 @@ export function ChartsSection({ stats }: { stats: StatsResponse }) {
   const hasSubjectData = subjectData.some((s) => s.value > 0);
   const hasTrendData = trendData.some((t) => t.minutes > 0);
 
+  // 两张图都没数据时整块不渲染，别在首页摆"暂无数据"占位
+  if (!hasSubjectData && !hasTrendData) return null;
+
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <ChartCard title="各学科学习时长占比">
-        {hasSubjectData ? (
+      {hasSubjectData && (
+        <ChartCard title="各学科学习时长占比">
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
@@ -49,13 +52,11 @@ export function ChartsSection({ stats }: { stats: StatsResponse }) {
               <Tooltip formatter={(v) => `${v} 分钟`} />
             </PieChart>
           </ResponsiveContainer>
-        ) : (
-          <ChartEmpty />
-        )}
-      </ChartCard>
+        </ChartCard>
+      )}
 
-      <ChartCard title="近 14 天学习时长趋势">
-        {hasTrendData ? (
+      {hasTrendData && (
+        <ChartCard title="近 14 天学习时长趋势">
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={trendData}>
               <XAxis
@@ -74,10 +75,8 @@ export function ChartsSection({ stats }: { stats: StatsResponse }) {
               />
             </AreaChart>
           </ResponsiveContainer>
-        ) : (
-          <ChartEmpty />
-        )}
-      </ChartCard>
+        </ChartCard>
+      )}
     </div>
   );
 }
@@ -94,13 +93,5 @@ function ChartCard({
       <h3 className="mb-2 text-sm font-medium text-slate-600">{title}</h3>
       {children}
     </Card>
-  );
-}
-
-function ChartEmpty() {
-  return (
-    <div className="flex h-[200px] items-center justify-center text-xs text-slate-400">
-      暂无数据
-    </div>
   );
 }

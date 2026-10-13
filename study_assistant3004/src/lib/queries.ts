@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { buildContinueItems, calcNodeStats } from "@/lib/path";
 import {
   calcGlobalProgress,
   calcStreak,
@@ -128,4 +129,45 @@ export async function getHomeStats() {
     })),
     trend,
   };
+}
+
+/**
+ * 每个学科"下一个该学的节"。
+ * 显式标记为学习中的节点优先，否则按树序取第一个未开始的叶子。
+ */
+export async function getContinueLearning(subjectId?: string) {
+  const subjects = await prisma.subject.findMany({
+    where: subjectId ? { id: subjectId } : {},
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true, color: true },
+  });
+  const nodes = await prisma.pathNode.findMany({
+    where: subjectId ? { subjectId } : {},
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      parentId: true,
+      order: true,
+      note: true,
+      subjectId: true,
+    },
+    orderBy: { order: "asc" },
+  });
+  return buildContinueItems(subjects, nodes);
+}
+
+/** 全局节点维度统计（总节数 / 已学节数 / 有笔记的节点），不依赖打卡 */
+export async function getNodeStats() {
+  const nodes = await prisma.pathNode.findMany({
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      parentId: true,
+      order: true,
+      note: true,
+    },
+  });
+  return calcNodeStats(nodes);
 }
