@@ -1,6 +1,6 @@
 import { readFile, unlink } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
-import { pickEnum } from "@/lib/utils";
+import { normalizeIds, pickEnum } from "@/lib/utils";
 
 export async function GET(
   _request: Request,
@@ -30,14 +30,34 @@ export async function PATCH(
     string,
     unknown
   >;
-  const status = pickEnum(
-    body.status,
-    ["NOT_STARTED", "LEARNING", "COMPLETED", "KEY_ARCHIVE"],
-    "NOT_STARTED",
-  );
+
+  const data: {
+    status?: "NOT_STARTED" | "LEARNING" | "COMPLETED" | "KEY_ARCHIVE";
+    pathNodes?: { set: { id: string }[] };
+  } = {};
+
+  // 只有显式传了 status 才改状态，避免"仅绑定节点"时把状态重置
+  if (typeof body.status === "string") {
+    data.status = pickEnum(
+      body.status,
+      ["NOT_STARTED", "LEARNING", "COMPLETED", "KEY_ARCHIVE"],
+      "NOT_STARTED",
+    );
+  }
+
+  // 归档到节点：把未归档文件绑定到指定节点（传空数组则解绑，回到未归档区）
+  if (Array.isArray(body.pathNodeIds)) {
+    const nodeIds = normalizeIds(body.pathNodeIds);
+    data.pathNodes = { set: nodeIds.map((nid) => ({ id: nid })) };
+  }
+
   const file = await prisma.studyFile.update({
     where: { id },
-    data: { status },
+    data,
+    include: {
+      subject: { select: { id: true, name: true, color: true } },
+      pathNodes: { select: { id: true, title: true } },
+    },
   });
   return Response.json(file);
 }

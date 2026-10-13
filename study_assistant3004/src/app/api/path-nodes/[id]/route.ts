@@ -1,6 +1,6 @@
 import { unlink } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
-import { diffRemovedIds, pickEnum } from "@/lib/utils";
+import { pickEnum } from "@/lib/utils";
 
 /** 收集节点及其所有后代节点的 id */
 async function collectDescendantIds(id: string): Promise<string[]> {
@@ -50,20 +50,11 @@ export async function PATCH(
   if (body.parentId === null) data.parentId = null;
   else if (typeof body.parentId === "string") data.parentId = body.parentId;
 
-  // 记录本次被解绑（但可能仍绑定在其他节点上）的文件，稍后清理真正没人引用的
-  let removedFileIds: string[] = [];
+  // 只解绑，不删除：失去绑定的文件会进入"未归档区"，由用户手动管理，
+  // 不会被自动删掉（数据库记录与磁盘文件都保留）
   if (Array.isArray(body.fileIds)) {
-    const nextFileIds = body.fileIds as string[];
-    const current = await prisma.pathNode.findUnique({
-      where: { id },
-      select: { files: { select: { id: true } } },
-    });
-    removedFileIds = diffRemovedIds(
-      (current?.files ?? []).map((f) => f.id),
-      nextFileIds,
-    );
     data.files = {
-      set: nextFileIds.map((fid) => ({ id: fid })),
+      set: (body.fileIds as string[]).map((fid) => ({ id: fid })),
     };
   }
 
@@ -81,23 +72,6 @@ export async function PATCH(
       where: { pathNodes: { some: { id } } },
       data: { status: "COMPLETED" },
     });
-  }
-
-  // 解绑后已无任何节点引用的文件 → 数据库记录与磁盘文件一并清理，
-  // 否则会变成"幽灵文件"，继续被归档文件列表和进度统计算进去
-  if (removedFileIds.length > 0) {
-    const unbound = await prisma.studyFile.findMany({
-      where: { id: { in: removedFileIds }, pathNodes: { none: {} } },
-      select: { id: true, storedPath: true },
-    });
-    if (unbound.length > 0) {
-      await prisma.studyFile.deleteMany({
-        where: { id: { in: unbound.map((f) => f.id) } },
-      });
-      await Promise.all(
-        unbound.map((f) => unlink(f.storedPath).catch(() => {})),
-      );
-    }
   }
 
   return Response.json(node);

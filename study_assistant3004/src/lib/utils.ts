@@ -18,12 +18,6 @@ export function formatDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** 返回 prev 中存在、但 next 中已消失的 id（用于找出被解绑的关联），顺序按 prev 首次出现 */
-export function diffRemovedIds(prev: string[], next: string[]): string[] {
-  const kept = new Set(next);
-  return [...new Set(prev)].filter((id) => !kept.has(id));
-}
-
 /** 把未知输入归一化成干净的 id 列表：过滤非法项、去重、截断上限 */
 export function normalizeIds(input: unknown, max = 200): string[] {
   if (!Array.isArray(input)) return [];

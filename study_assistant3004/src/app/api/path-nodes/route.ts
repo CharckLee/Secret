@@ -1,12 +1,11 @@
 import { prisma } from "@/lib/prisma";
 
+/** subjectId 可选：不传则返回全部节点（用于"归档到节点"的分组选择器） */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const subjectId = url.searchParams.get("subjectId");
-  if (!subjectId)
-    return Response.json({ error: "缺少 subjectId" }, { status: 400 });
   const nodes = await prisma.pathNode.findMany({
-    where: { subjectId },
+    where: subjectId ? { subjectId } : {},
     orderBy: { order: "asc" },
   });
   return Response.json(nodes);

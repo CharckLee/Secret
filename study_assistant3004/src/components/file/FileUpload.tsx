@@ -14,6 +14,7 @@ export function FileUpload({
   const [subjectId, setSubjectId] = useState("");
   const [nodeId, setNodeId] = useState("");
   const [nodes, setNodes] = useState<{ id: string; title: string }[]>([]);
+  const [nodeFilter, setNodeFilter] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,19 +24,27 @@ export function FileUpload({
     if (!subjectId) {
       setNodes([]);
       setNodeId("");
+      setNodeFilter("");
       return;
     }
     setNodeId("");
+    setNodeFilter("");
     fetch(`/api/path-nodes?subjectId=${subjectId}`, { cache: "no-store" })
       .then((r) => r.json())
       .then(setNodes)
       .catch(() => setNodes([]));
   }, [subjectId]);
 
+  const visibleNodes = nodeFilter
+    ? nodes.filter((n) =>
+        n.title.toLowerCase().includes(nodeFilter.trim().toLowerCase()),
+      )
+    : nodes;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || !subjectId || !nodeId) {
-      setError("请选择学科、章节和文件");
+    if (!file || !subjectId) {
+      setError("请选择学科和文件");
       return;
     }
     setUploading(true);
@@ -44,6 +53,7 @@ export function FileUpload({
       const fd = new FormData();
       fd.append("file", file);
       fd.append("subjectId", subjectId);
+      // 留空 = 不上归档，直接进未归档区
       fd.append("pathNodeIds", nodeId);
       const res = await fetch("/api/files", { method: "POST", body: fd });
       if (!res.ok) {
@@ -55,6 +65,7 @@ export function FileUpload({
       onUploaded();
       setFile(null);
       setNodeId("");
+      setNodeFilter("");
       if (inputRef.current) inputRef.current.value = "";
     } catch (err) {
       setError(err instanceof Error ? err.message : "上传失败");
@@ -83,29 +94,38 @@ export function FileUpload({
         </Select>
       </div>
       <div className="min-w-44">
-        <label className="mb-1 block text-sm text-slate-600">所属章节</label>
+        <label className="mb-1 block text-sm text-slate-600">
+          归属章节（可选）
+        </label>
         <Select
           value={nodeId}
           onChange={(e) => setNodeId(e.target.value)}
           disabled={!subjectId}
         >
           <option value="">
-            {!subjectId
-              ? "先选学科"
-              : nodes.length
-                ? "选择章节"
-                : "该学科暂无章节"}
+            {!subjectId ? "先选学科" : "暂不归档（先放入未归档区）"}
           </option>
-          {nodes.map((n) => (
+          {visibleNodes.map((n) => (
             <option key={n.id} value={n.id}>
               {n.title}
             </option>
           ))}
         </Select>
       </div>
+      {subjectId && nodes.length > 8 && (
+        <div className="min-w-36">
+          <label className="mb-1 block text-sm text-slate-600">筛选章节</label>
+          <input
+            value={nodeFilter}
+            onChange={(e) => setNodeFilter(e.target.value)}
+            placeholder="输入关键字"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-blue-500"
+          />
+        </div>
+      )}
       <div className="min-w-48 flex-1">
         <label className="mb-1 block text-sm text-slate-600">
-          学习资料（PDF / TXT / 文档）
+          学习资料（图片 / PDF / 文档）
         </label>
         <input
           ref={inputRef}
@@ -114,8 +134,8 @@ export function FileUpload({
           className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
         />
       </div>
-      <Button type="submit" disabled={uploading || !file || !subjectId || !nodeId}>
-        {uploading ? "上传中…" : "上传归档"}
+      <Button type="submit" disabled={uploading || !file || !subjectId}>
+        {uploading ? "上传中…" : nodeId ? "上传归档" : "上传到未归档"}
       </Button>
       {error && <p className="w-full text-sm text-rose-600">{error}</p>}
     </form>
