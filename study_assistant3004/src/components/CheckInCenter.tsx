@@ -14,7 +14,7 @@ import type { CheckInItem, ReviewItem, SubjectRow } from "@/types/api";
 
 /** 删除打卡不会回滚它当初自动打上的完成标记，确认文案里说明清楚 */
 const DELETE_WARNING =
-  "学习时长、连续打卡天数等统计会同步重算；打卡时自动标记完成的节点/知识点不会回滚。";
+  "学习时长、连续打卡天数等统计会同步重算；打卡时自动标记完成的节点不会回滚。";
 
 export function CheckInCenter() {
   const { data: checkIns, loading: ciLoading, reload: reloadCi } =

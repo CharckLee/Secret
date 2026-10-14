@@ -58,7 +58,7 @@ export function KnowledgeWarehouse() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h1 className="mr-auto text-xl font-semibold text-slate-800">
-          知识仓库
+          文件仓库
         </h1>
         <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
           <TabButton

@@ -195,7 +195,7 @@ export function HomeDashboard({
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <QuickEntry
           href="/knowledge"
-          title="知识仓库"
+          title="文件仓库"
           desc="归档文件与未归档资料"
         />
         <QuickEntry href="/checkin" title="打卡复盘" desc="打卡与复盘记录" />

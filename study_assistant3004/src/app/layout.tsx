@@ -11,7 +11,8 @@ export const metadata: Metadata = {
 
 const navItems = [
   { href: "/", label: "工作台" },
-  { href: "/knowledge", label: "知识仓库" },
+  { href: "/subjects", label: "学科" },
+  { href: "/knowledge", label: "文件仓库" },
   { href: "/checkin", label: "打卡复盘" },
 ];
 
