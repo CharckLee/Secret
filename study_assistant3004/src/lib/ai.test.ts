@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildPrompt,
   buildRuleRecommendation,
   extractJson,
   parseAiRecommendation,
@@ -168,5 +169,102 @@ describe("selectUsableImages", () => {
 
   it("returns an empty list for empty input", () => {
     expect(selectUsableImages([])).toEqual([]);
+  });
+});
+
+describe("buildPrompt", () => {
+  it("lists the focus nodes", () => {
+    const p = buildPrompt({
+      nodes: [
+        {
+          title: "微管",
+          subjectName: "细胞生物学",
+          status: "LEARNING",
+          note: "",
+        },
+      ],
+    });
+    expect(p).toContain("微管");
+    expect(p).toContain("细胞生物学");
+  });
+
+  it("omits every optional section when there is no data", () => {
+    const p = buildPrompt({ nodes: [] });
+    expect(p).not.toContain("他已经写下的");
+    expect(p).not.toContain("随附");
+    expect(p).not.toContain("打卡记录");
+    expect(p).not.toContain("复盘记录");
+  });
+
+  it("includes note samples as background", () => {
+    const p = buildPrompt({
+      nodes: [],
+      noteSamples: [{ title: "微管", note: "由微管蛋白二聚体组成" }],
+    });
+    expect(p).toContain("笔记");
+    expect(p).toContain("微管");
+    expect(p).toContain("由微管蛋白二聚体组成");
+  });
+
+  it("includes image file names", () => {
+    const p = buildPrompt({ nodes: [], imageNames: ["RNA分类.jpg"] });
+    expect(p).toContain("图片");
+    expect(p).toContain("RNA分类.jpg");
+  });
+
+  it("includes check-in records", () => {
+    const p = buildPrompt({
+      nodes: [],
+      checkIns: [
+        {
+          date: "2026-09-14",
+          durationMinutes: 30,
+          status: "PARTIAL",
+          note: "看了细胞膜",
+        },
+      ],
+    });
+    expect(p).toContain("打卡");
+    expect(p).toContain("2026-09-14");
+    expect(p).toContain("30");
+    expect(p).toContain("看了细胞膜");
+  });
+
+  it("includes review records", () => {
+    const p = buildPrompt({
+      nodes: [],
+      reviews: [
+        {
+          date: "2026-09-13",
+          gain: "搞懂静息电位",
+          question: "动作电位还没懂",
+          difficulty: "离子通道",
+          plan: "明天继续",
+        },
+      ],
+    });
+    expect(p).toContain("复盘");
+    expect(p).toContain("搞懂静息电位");
+    expect(p).toContain("动作电位还没懂");
+  });
+
+  it("combines all sources when everything is present", () => {
+    const p = buildPrompt({
+      subjectName: "人体结构与功能",
+      nodes: [
+        { title: "微管", subjectName: "人体结构与功能", status: "NOT_STARTED", note: "" },
+      ],
+      noteSamples: [{ title: "线粒体", note: "能量工厂" }],
+      imageNames: ["a.jpg"],
+      checkIns: [
+        { date: "2026-09-14", durationMinutes: 30, status: "PARTIAL", note: "n" },
+      ],
+      reviews: [
+        { date: "2026-09-13", gain: "g", question: "q", difficulty: "d", plan: "p" },
+      ],
+    });
+    for (const kw of ["人体结构与功能", "微管", "能量工厂", "a.jpg", "打卡", "复盘"]) {
+      expect(p).toContain(kw);
+    }
   });
 });

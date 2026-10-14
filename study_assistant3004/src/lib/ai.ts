@@ -1,5 +1,5 @@
-import { NODE_STATUS_LABELS } from "@/types";
-import type { NodeStatus } from "@/types";
+import { CHECKIN_STATUS_LABELS, NODE_STATUS_LABELS } from "@/types";
+import type { CheckInStatus, NodeStatus } from "@/types";
 
 export interface AiWeakPoint {
   title: string;
@@ -107,6 +107,23 @@ export function buildRuleRecommendation(input: {
   };
 }
 
+/** 打卡样本：让模型看到学习节奏与掌握状态 */
+export interface CheckInSample {
+  date: string;
+  durationMinutes: number;
+  status: CheckInStatus;
+  note: string;
+}
+
+/** 复盘样本：让模型看到他自己发现的问题与计划 */
+export interface ReviewSample {
+  date: string;
+  gain: string;
+  question: string;
+  difficulty: string;
+  plan: string;
+}
+
 export function buildPrompt(input: {
   subjectName?: string;
   nodes: AiFocusNode[];
@@ -114,6 +131,10 @@ export function buildPrompt(input: {
   noteSamples?: { title: string; note: string }[];
   /** 一并发送的图片文件名，仅用于在提示里说明取材范围 */
   imageNames?: string[];
+  /** 最近的打卡记录 */
+  checkIns?: CheckInSample[];
+  /** 最近的复盘记录 */
+  reviews?: ReviewSample[];
 }): string {
   const header = input.subjectName
     ? `学科：${input.subjectName}`
@@ -137,6 +158,40 @@ export function buildPrompt(input: {
         ]
       : [];
 
+  const checkIns = input.checkIns ?? [];
+  const checkInLines =
+    checkIns.length > 0
+      ? [
+          "",
+          `最近的 ${checkIns.length} 条打卡记录（反映他的学习节奏与掌握状态）：`,
+          ...checkIns.map(
+            (c) =>
+              `- ${c.date} · ${c.durationMinutes} 分钟 · ${
+                CHECKIN_STATUS_LABELS[c.status]
+              }${c.note.trim() ? ` · ${c.note.slice(0, 60)}` : ""}`,
+          ),
+        ]
+      : [];
+
+  const reviews = input.reviews ?? [];
+  const reviewLines =
+    reviews.length > 0
+      ? [
+          "",
+          `最近的 ${reviews.length} 条复盘记录（反映他自己发现的问题与计划）：`,
+          ...reviews.flatMap((r) => {
+            const parts = [`- ${r.date}`];
+            if (r.gain.trim()) parts.push(`  收获：${r.gain.slice(0, 60)}`);
+            if (r.question.trim())
+              parts.push(`  疑问：${r.question.slice(0, 60)}`);
+            if (r.difficulty.trim())
+              parts.push(`  难点：${r.difficulty.slice(0, 60)}`);
+            if (r.plan.trim()) parts.push(`  计划：${r.plan.slice(0, 60)}`);
+            return parts;
+          }),
+        ]
+      : [];
+
   const imageNames = input.imageNames ?? [];
   const materialLines =
     imageNames.length > 0
@@ -155,6 +210,8 @@ export function buildPrompt(input: {
     "待推进的学习节点（正在学习中，或尚未写笔记）：",
     ...lines,
     ...noteLines,
+    ...checkInLines,
+    ...reviewLines,
     ...materialLines,
     "",
     "请基于以上资料，输出 JSON 学习建议（汇总 + 每个节点的现状与学习方法）。",

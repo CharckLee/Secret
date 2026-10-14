@@ -12,6 +12,8 @@ interface MaterialInfo {
   imageNames: string[];
   notes: number;
   nodes: number;
+  checkIns: number;
+  reviews: number;
 }
 
 interface AiResponse {
@@ -46,7 +48,8 @@ export function AiRecommendPanel({ subjectId }: { subjectId?: string }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-slate-500">
-            参考「正在学 / 尚无笔记」的节点，加上本学科的资料图片，给出该优先推进什么
+            参考「正在学 / 尚无笔记」的节点，加上本学科的资料图片、你写过的笔记、打卡与复盘，
+            给出该优先推进什么
           </p>
           {loading && (
             <p className="mt-1 text-xs text-slate-400">
@@ -81,7 +84,8 @@ export function AiRecommendPanel({ subjectId }: { subjectId?: string }) {
               {data.material.imageNames.length > 0 &&
                 `（${data.material.imageNames.join("、")}）`}
               {" · "}
-              {data.material.notes} 条笔记 · 共 {data.material.nodes} 个待推进节点
+              {data.material.notes} 条笔记 · {data.material.checkIns} 条打卡 ·{" "}
+              {data.material.reviews} 条复盘 · 共 {data.material.nodes} 个待推进节点
             </p>
           )}
 
