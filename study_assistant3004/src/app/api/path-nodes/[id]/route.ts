@@ -1,6 +1,7 @@
 import { unlink } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 import { pickEnum } from "@/lib/utils";
+import { inferKind } from "@/lib/path";
 
 /** 收集节点及其所有后代节点的 id */
 async function collectDescendantIds(id: string): Promise<string[]> {
@@ -18,6 +19,25 @@ async function collectDescendantIds(id: string): Promise<string[]> {
   return ids;
 }
 
+/** 父节点的 kind 变了，整棵子树的 kind 要跟着重算（最多 5 层，开销可忽略） */
+async function cascadeKind(
+  parentId: string,
+  parentKind: string,
+): Promise<void> {
+  const children = await prisma.pathNode.findMany({
+    where: { parentId },
+    select: { id: true },
+  });
+  for (const child of children) {
+    const childKind = inferKind(parentKind);
+    await prisma.pathNode.update({
+      where: { id: child.id },
+      data: { kind: childKind },
+    });
+    await cascadeKind(child.id, childKind);
+  }
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -31,7 +51,6 @@ export async function PATCH(
   const data: {
     title?: string;
     note?: string;
-    kind?: string;
     status?: "NOT_STARTED" | "LEARNING" | "COMPLETED";
     parentId?: string | null;
     files?: { set: { id: string }[] };
@@ -40,7 +59,7 @@ export async function PATCH(
   if (typeof body.title === "string" && body.title.trim())
     data.title = body.title.trim();
   if (typeof body.note === "string") data.note = body.note;
-  if (typeof body.kind === "string") data.kind = body.kind;
+  // kind 不接受客户端指定：它由节点在树中的层级决定，见下方 parentId 分支
   if (typeof body.status === "string")
     data.status = pickEnum(
       body.status,
@@ -65,6 +84,21 @@ export async function PATCH(
       files: { select: { id: true, filename: true } },
     },
   });
+
+  // 移动了节点 → 它的层级变了，kind 与整棵子树都要重算
+  if (data.parentId !== undefined) {
+    const parent = data.parentId
+      ? await prisma.pathNode.findUnique({
+          where: { id: data.parentId },
+          select: { kind: true },
+        })
+      : null;
+    const kind = inferKind(parent?.kind ?? null);
+    if (kind !== node.kind) {
+      await prisma.pathNode.update({ where: { id }, data: { kind } });
+      await cascadeKind(id, kind);
+    }
+  }
 
   // 节点完成 → 绑定文件也进入完成状态
   if (data.status === "COMPLETED") {

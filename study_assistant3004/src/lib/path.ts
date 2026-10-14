@@ -43,6 +43,17 @@ export function kindVisual(kind: string): KindVisual {
   return KIND_VISUALS[kind as NodeKind] ?? KIND_VISUALS.point;
 }
 
+/**
+ * 根据父节点的 kind 推断新节点的 kind：
+ * 顶层是"章"，章的下一层是"节"，再往下都是"点"。
+ * 有了它，用户新建节点时不必手选类型。
+ */
+export function inferKind(parentKind: string | null): NodeKind {
+  if (parentKind === null) return "chapter";
+  if (parentKind === "chapter") return "section";
+  return "point";
+}
+
 export interface SubjectNodeGroup {
   subjectId: string;
   subjectName: string;

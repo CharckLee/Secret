@@ -6,6 +6,7 @@ import {
   findNextNode,
   flattenTree,
   groupNodesBySubject,
+  inferKind,
   kindVisual,
   nodePathTitles,
 } from "./path";
@@ -393,5 +394,25 @@ describe("kindVisual", () => {
       return `${v.bar}|${v.dot}|${v.titleClass}`;
     });
     expect(new Set(seen).size).toBe(3);
+  });
+});
+
+describe("inferKind", () => {
+  it("makes a root node a chapter", () => {
+    expect(inferKind(null)).toBe("chapter");
+  });
+
+  it("puts a chapter's direct child in a section", () => {
+    expect(inferKind("chapter")).toBe("section");
+  });
+
+  it("makes everything deeper a point", () => {
+    expect(inferKind("section")).toBe("point");
+    expect(inferKind("point")).toBe("point");
+  });
+
+  it("falls back to point for empty or unknown parent kinds", () => {
+    expect(inferKind("")).toBe("point");
+    expect(inferKind("weird")).toBe("point");
   });
 });

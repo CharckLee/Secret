@@ -23,17 +23,11 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { buildNodeDeleteWarning, kindVisual } from "@/lib/path";
+import { buildNodeDeleteWarning, inferKind, kindVisual } from "@/lib/path";
 import { useFilePreview } from "@/components/file/FilePreviewProvider";
 import { NODE_STATUS_LABELS } from "@/types";
 import type { NodeStatus } from "@/types";
 import type { PathNodeItem } from "@/types/api";
-
-const KIND_LABELS: Record<string, string> = {
-  chapter: "章节",
-  node: "子节点",
-  milestone: "阶段目标",
-};
 
 const STATUS_TONE: Record<NodeStatus, "slate" | "amber" | "emerald"> = {
   NOT_STARTED: "slate",
@@ -628,7 +622,6 @@ function NodeForm({
 }) {
   const { open: openPreview } = useFilePreview();
   const [title, setTitle] = useState("");
-  const [kind, setKind] = useState("chapter");
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<NodeStatus>("NOT_STARTED");
   const [parent, setParent] = useState("");
@@ -645,7 +638,6 @@ function NodeForm({
     setWasOpen(open);
     if (open) {
       setTitle(node?.title ?? "");
-      setKind(node?.kind ?? "chapter");
       setNote(node?.note ?? "");
       setStatus(node?.status ?? "NOT_STARTED");
       setParent(node?.parentId ?? parentId ?? "");
@@ -660,6 +652,13 @@ function NodeForm({
     (n) => n.id !== node?.id && !excluded.has(n.id),
   );
 
+  // 类型不再是可选项：它由所在层级决定（顶层=章，章的下一层=节，更深=点）
+  const autoKindLabel = kindVisual(
+    inferKind(
+      parent ? (allNodes.find((n) => n.id === parent)?.kind ?? null) : null,
+    ),
+  ).label;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -672,7 +671,6 @@ function NodeForm({
           method: "PATCH",
           body: JSON.stringify({
             title,
-            kind,
             note,
             status,
             parentId: parent || null,
@@ -685,7 +683,6 @@ function NodeForm({
           method: "POST",
           body: JSON.stringify({
             title,
-            kind,
             note,
             subjectId,
             parentId: parent || null,
@@ -736,13 +733,12 @@ function NodeForm({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm text-slate-600">类型</label>
-            <Select value={kind} onChange={(e) => setKind(e.target.value)}>
-              {Object.entries(KIND_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </Select>
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+              {autoKindLabel}
+              <span className="ml-2 text-xs text-slate-400">
+                由层级自动决定
+              </span>
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-sm text-slate-600">进度</label>
