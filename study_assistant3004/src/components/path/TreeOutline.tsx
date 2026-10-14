@@ -92,6 +92,12 @@ export function TreeOutline({
   } | null>(null);
   /** 被折叠的节点 id（默认全部展开） */
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  // 节点行切换状态时先问一句"这次学了多久"，确认后连带写一条当天打卡
+  const [pendingCheckIn, setPendingCheckIn] = useState<{
+    id: string;
+    status: "LEARNING" | "COMPLETED";
+  } | null>(null);
+  const [minutes, setMinutes] = useState("");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -139,21 +145,38 @@ export function TreeOutline({
     }).catch(() => {});
   }
 
-  async function patchStatus(id: string, status: NodeStatus) {
+  async function patchStatus(
+    id: string,
+    status: NodeStatus,
+    checkInMinutes?: number,
+  ) {
     await apiFetch(`/api/path-nodes/${id}`, {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(
+        checkInMinutes === undefined ? { status } : { status, checkInMinutes },
+      ),
     }).catch(() => {});
     onChanged();
   }
 
-  /** 显式"开始学习"：只有用户主动点按钮才会进入学习中状态 */
+  /** 显式"开始学习"：先问时长，确认后同时写一条 PARTIAL 打卡 */
   function startLearning(id: string) {
-    patchStatus(id, "LEARNING");
+    setMinutes("");
+    setPendingCheckIn({ id, status: "LEARNING" });
   }
 
   function stopLearning(id: string) {
-    patchStatus(id, "NOT_STARTED");
+    void patchStatus(id, "NOT_STARTED");
+  }
+
+  /** 确认快速打卡：时长留空记为 0，之后可在打卡页补 */
+  async function confirmQuickCheckIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pendingCheckIn) return;
+    const parsed = Math.max(0, Math.round(Number(minutes) || 0));
+    const { id, status } = pendingCheckIn;
+    setPendingCheckIn(null);
+    await patchStatus(id, status, parsed);
   }
 
   /** 点标题只做展开 / 折叠，不再顺手改状态 */
@@ -173,12 +196,15 @@ export function TreeOutline({
     );
   }
 
+  /** 学完这节：先问时长，确认后同时把当天打卡升为 MASTERED */
   function markCompleted(id: string) {
-    patchStatus(id, "COMPLETED");
+    setMinutes("");
+    setPendingCheckIn({ id, status: "COMPLETED" });
   }
 
+  /** 退回"在学"：属于纠正误操作，不写打卡 */
   function markIncomplete(id: string) {
-    patchStatus(id, "LEARNING");
+    void patchStatus(id, "LEARNING");
   }
 
   /** 打开删除确认弹窗：文件删不删由用户在弹窗里当场选，不在这里决定 */
@@ -312,6 +338,48 @@ export function TreeOutline({
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={pendingCheckIn !== null}
+        onClose={() => setPendingCheckIn(null)}
+        title={pendingCheckIn?.status === "COMPLETED" ? "学完这节" : "开始学习"}
+      >
+        <form onSubmit={confirmQuickCheckIn} className="space-y-4">
+          <p className="text-sm text-slate-600">
+            {pendingCheckIn
+              ? localNodes.find((n) => n.id === pendingCheckIn.id)?.title
+              : ""}
+            <span className="mt-1 block text-xs text-slate-400">
+              确定后会同时记一条今天的学习打卡
+            </span>
+          </p>
+          <div>
+            <label className="mb-1 block text-sm text-slate-600">
+              这次学了多久（分钟，可留空）
+            </label>
+            <Input
+              type="number"
+              min="0"
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              placeholder="留空记为 0，之后可在打卡页补"
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setPendingCheckIn(null)}
+            >
+              取消
+            </Button>
+            <Button type="submit">
+              {pendingCheckIn?.status === "COMPLETED" ? "标记学完" : "标记在学"}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

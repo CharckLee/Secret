@@ -3,6 +3,7 @@ import {
   buildContinueItems,
   buildNodeDeleteWarning,
   calcNodeStats,
+  checkInStatusFor,
   findNextNode,
   flattenTree,
   groupNodesBySubject,
@@ -414,5 +415,19 @@ describe("inferKind", () => {
   it("falls back to point for empty or unknown parent kinds", () => {
     expect(inferKind("")).toBe("point");
     expect(inferKind("weird")).toBe("point");
+  });
+});
+
+describe("checkInStatusFor", () => {
+  it("records a PARTIAL check-in when a node starts", () => {
+    expect(checkInStatusFor("LEARNING")).toBe("PARTIAL");
+  });
+
+  it("records a MASTERED check-in when a node is completed", () => {
+    expect(checkInStatusFor("COMPLETED")).toBe("MASTERED");
+  });
+
+  it("records nothing when a node goes back to not started", () => {
+    expect(checkInStatusFor("NOT_STARTED")).toBeNull();
   });
 });

@@ -3,6 +3,7 @@ import {
   calcGlobalProgress,
   calcStreak,
   calcSubjectProgress,
+  todayRange,
 } from "./progress";
 
 describe("calcSubjectProgress", () => {
@@ -141,5 +142,35 @@ describe("calcStreak", () => {
   it("returns 0 when no recent check-ins", () => {
     const today = d("2026-08-21");
     expect(calcStreak([d("2026-08-10")], today)).toBe(0);
+  });
+});
+
+describe("todayRange", () => {
+  it("covers the whole local day of the given instant", () => {
+    const { start, end } = todayRange(new Date("2026-09-14T15:30:00"));
+    expect(start.getFullYear()).toBe(2026);
+    expect(start.getMonth()).toBe(8);
+    expect(start.getDate()).toBe(14);
+    expect(start.getHours()).toBe(0);
+    expect(start.getMinutes()).toBe(0);
+    expect(start.getSeconds()).toBe(0);
+    expect(end.getDate()).toBe(14);
+    expect(end.getHours()).toBe(23);
+    expect(end.getMinutes()).toBe(59);
+  });
+
+  it("includes both boundaries", () => {
+    const { start, end } = todayRange(new Date("2026-09-14T00:00:00"));
+    expect(start.getTime()).toBeLessThanOrEqual(
+      new Date("2026-09-14T00:00:00").getTime(),
+    );
+    expect(end.getTime()).toBeGreaterThanOrEqual(
+      new Date("2026-09-14T23:59:59").getTime(),
+    );
+  });
+
+  it("never spans more than one day", () => {
+    const { start, end } = todayRange(new Date("2026-09-14T12:00:00"));
+    expect(end.getTime() - start.getTime()).toBeLessThan(24 * 60 * 60 * 1000);
   });
 });

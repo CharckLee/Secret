@@ -1,7 +1,8 @@
 import { unlink } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 import { pickEnum } from "@/lib/utils";
-import { inferKind } from "@/lib/path";
+import { checkInStatusFor, inferKind } from "@/lib/path";
+import { todayRange } from "@/lib/progress";
 
 /** 收集节点及其所有后代节点的 id */
 async function collectDescendantIds(id: string): Promise<string[]> {
@@ -97,6 +98,38 @@ export async function PATCH(
     if (kind !== node.kind) {
       await prisma.pathNode.update({ where: { id }, data: { kind } });
       await cascadeKind(id, kind);
+    }
+  }
+
+  // 节点状态变化 → 同步一条当天打卡。同一节点同一天只留一条：
+  // 时长累加，状态只升不降（反复点击不会把 MASTERED 降回 PARTIAL）。
+  const syncCheckInStatus = data.status ? checkInStatusFor(data.status) : null;
+  if (syncCheckInStatus) {
+    const minutes = Math.max(0, Math.round(Number(body.checkInMinutes) || 0));
+    const { start, end } = todayRange();
+    const existing = await prisma.checkIn.findFirst({
+      where: { pathNodeId: id, date: { gte: start, lte: end } },
+      select: { id: true, status: true, durationMinutes: true },
+    });
+    if (existing) {
+      await prisma.checkIn.update({
+        where: { id: existing.id },
+        data: {
+          status:
+            syncCheckInStatus === "MASTERED" ? "MASTERED" : existing.status,
+          durationMinutes: existing.durationMinutes + minutes,
+        },
+      });
+    } else {
+      await prisma.checkIn.create({
+        data: {
+          subjectId: node.subjectId,
+          pathNodeId: id,
+          status: syncCheckInStatus,
+          durationMinutes: minutes,
+          note: "",
+        },
+      });
     }
   }
 

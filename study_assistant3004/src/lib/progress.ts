@@ -108,6 +108,18 @@ export function dateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** 本地时区下"今天"的起止时刻，用于按天查重 */
+export function todayRange(now: Date = new Date()): {
+  start: Date;
+  end: Date;
+} {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 function addDays(d: Date, days: number): Date {
   const next = new Date(d);
   next.setDate(next.getDate() + days);

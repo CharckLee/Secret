@@ -1,4 +1,4 @@
-import type { NodeStatus } from "@/types";
+import type { CheckInStatus, NodeStatus } from "@/types";
 
 /** 节点的一级类型：章 / 节 / 知识点（对应 schema 的 `kind` 字段） */
 export type NodeKind = "chapter" | "section" | "point";
@@ -52,6 +52,18 @@ export function inferKind(parentKind: string | null): NodeKind {
   if (parentKind === null) return "chapter";
   if (parentKind === "chapter") return "section";
   return "point";
+}
+
+/**
+ * 节点状态变化时该记哪种打卡：
+ * - 标为"在学" → PARTIAL
+ * - 标为"学完" → MASTERED
+ * - 退回"未开始"（用户撤销误操作）→ null，即不记录
+ */
+export function checkInStatusFor(nodeStatus: NodeStatus): CheckInStatus | null {
+  if (nodeStatus === "LEARNING") return "PARTIAL";
+  if (nodeStatus === "COMPLETED") return "MASTERED";
+  return null;
 }
 
 export interface SubjectNodeGroup {
