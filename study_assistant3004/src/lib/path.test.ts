@@ -6,6 +6,7 @@ import {
   findNextNode,
   flattenTree,
   groupNodesBySubject,
+  kindVisual,
   nodePathTitles,
 } from "./path";
 import type { PathNodeLike } from "./path";
@@ -351,5 +352,46 @@ describe("buildContinueItems", () => {
 
   it("handles empty input", () => {
     expect(buildContinueItems([], [])).toEqual([]);
+  });
+});
+
+describe("kindVisual", () => {
+  it("gives chapters a bar and a bold title", () => {
+    const v = kindVisual("chapter");
+    expect(v.label).toBe("章");
+    expect(v.bar).toBe(true);
+    expect(v.dot).toBe(false);
+    expect(v.titleClass).toContain("font-semibold");
+  });
+
+  it("gives sections medium weight and no marker", () => {
+    const v = kindVisual("section");
+    expect(v.label).toBe("节");
+    expect(v.bar).toBe(false);
+    expect(v.dot).toBe(false);
+    expect(v.titleClass).toContain("font-medium");
+  });
+
+  it("gives points a leading dot", () => {
+    const v = kindVisual("point");
+    expect(v.label).toBe("点");
+    expect(v.dot).toBe(true);
+    expect(v.bar).toBe(false);
+  });
+
+  it("falls back to point styling for unknown or empty kinds", () => {
+    for (const k of ["", "whatever", "POINT"]) {
+      const v = kindVisual(k);
+      expect(v.label).toBe("点");
+      expect(v.dot).toBe(true);
+    }
+  });
+
+  it("never marks two kinds with the same marker combination", () => {
+    const seen = ["chapter", "section", "point"].map((k) => {
+      const v = kindVisual(k);
+      return `${v.bar}|${v.dot}|${v.titleClass}`;
+    });
+    expect(new Set(seen).size).toBe(3);
   });
 });

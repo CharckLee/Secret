@@ -23,7 +23,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { buildNodeDeleteWarning } from "@/lib/path";
+import { buildNodeDeleteWarning, kindVisual } from "@/lib/path";
 import { useFilePreview } from "@/components/file/FilePreviewProvider";
 import { NODE_STATUS_LABELS } from "@/types";
 import type { NodeStatus } from "@/types";
@@ -358,6 +358,7 @@ function SortableNode({
   };
   const hasChildren = node.children.length > 0;
   const collapsed = collapsedIds.has(node.id);
+  const visual = kindVisual(node.kind);
 
   return (
     <div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-40")}>
@@ -388,15 +389,26 @@ function SortableNode({
         <Badge tone={STATUS_TONE[node.status]}>
           {NODE_STATUS_LABELS[node.status]}
         </Badge>
+        {visual.bar && (
+          <span
+            className="h-4 w-0.5 shrink-0 rounded-full bg-blue-400"
+            aria-hidden
+          />
+        )}
         <span
           className={cn(
             "min-w-0 flex-1 truncate text-sm",
-            node.status === "COMPLETED"
-              ? "text-slate-400 line-through"
-              : "text-slate-700",
+            visual.titleClass,
+            node.status === "COMPLETED" && "text-slate-400 line-through",
           )}
-          title={node.title}
+          title={`${visual.label} · ${node.title}`}
         >
+          {visual.dot && (
+            <span
+              className="mr-1.5 inline-block h-1 w-1 rounded-full bg-slate-400 align-middle"
+              aria-hidden
+            />
+          )}
           {node.title}
         </span>
         {node.status === "LEARNING" ? (

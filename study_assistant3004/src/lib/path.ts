@@ -1,5 +1,48 @@
 import type { NodeStatus } from "@/types";
 
+/** 节点的一级类型：章 / 节 / 知识点（对应 schema 的 `kind` 字段） */
+export type NodeKind = "chapter" | "section" | "point";
+
+export interface KindVisual {
+  /** 中文短名，用于工具提示与无障碍标签 */
+  label: string;
+  /** 标题的附加样式 */
+  titleClass: string;
+  /** 是否显示前置圆点（"点"用） */
+  dot: boolean;
+  /** 是否显示左侧竖条（"章"用） */
+  bar: boolean;
+}
+
+const KIND_VISUALS: Record<NodeKind, KindVisual> = {
+  chapter: {
+    label: "章",
+    titleClass: "font-semibold text-slate-900",
+    dot: false,
+    bar: true,
+  },
+  section: {
+    label: "节",
+    titleClass: "font-medium text-slate-800",
+    dot: false,
+    bar: false,
+  },
+  point: {
+    label: "点",
+    titleClass: "font-normal text-slate-700",
+    dot: true,
+    bar: false,
+  },
+};
+
+/**
+ * 把 `kind` 映射成树上的视觉差异。
+ * 未知或空值一律按"点"处理，这样历史数据里 kind 异常的节点也不会失去样式。
+ */
+export function kindVisual(kind: string): KindVisual {
+  return KIND_VISUALS[kind as NodeKind] ?? KIND_VISUALS.point;
+}
+
 export interface SubjectNodeGroup {
   subjectId: string;
   subjectName: string;
