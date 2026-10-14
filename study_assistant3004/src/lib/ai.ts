@@ -1,38 +1,111 @@
 import { CHECKIN_STATUS_LABELS, NODE_STATUS_LABELS } from "@/types";
 import type { CheckInStatus, NodeStatus } from "@/types";
 
-export interface AiWeakPoint {
-  title: string;
-  /** 掌握现状 / 待推进原因 */
-  summary: string;
-  /** 针对性学习方法 */
-  method: string;
-}
-
-export interface AiRecommendation {
-  summary: string;
-  weakPoints: AiWeakPoint[];
-}
-
 /** AI 建议的输入单位：一个待推进的学习节点 */
 export interface AiFocusNode {
+  id: string;
   title: string;
   subjectName: string;
   status: NodeStatus;
   note: string;
 }
 
-export const AI_SYSTEM_PROMPT = `你是一名学习建议助手，面向大学生/理工科/医学生。根据用户给出的待推进学习节点（来自他的学习路径树）以及随附的学习资料图片（如果有），输出 JSON：先用一句话汇总整体情况，再针对每个待推进节点给出「当前状态/为什么该先学它」和「针对性学习方法」。严格只输出 JSON，不要输出任何其他文字或代码块标记。
+/** 掌握档位：索引即档位，0 最弱 → 4 最强 */
+export const MASTERY_LEVELS = [
+  "未开始",
+  "听说过",
+  "能复述",
+  "能应用",
+  "能讲清",
+] as const;
+
+/** 一次最多返回多少条建议 */
+export const MAX_ADVICE_ITEMS = 8;
+
+/** 排序后的一条推进建议 */
+export interface AiAdviceItem {
+  nodeId: string;
+  title: string;
+  /** 0..4，越小越该先学 */
+  mastery: number;
+  reason: string;
+}
+
+export interface AiAdvice {
+  summary: string;
+  items: AiAdviceItem[];
+}
+
+/** 档位转中文标签；越界或非整数返回"未知"，渲染层不必再判断 */
+export function masteryLabel(mastery: number): string {
+  if (!Number.isInteger(mastery)) return "未知";
+  return MASTERY_LEVELS[mastery] ?? "未知";
+}
+
+/** 按掌握程度升序（薄弱的排前面）；同档位保持原顺序 */
+export function rankAdvice(items: AiAdviceItem[]): AiAdviceItem[] {
+  return [...items].sort((a, b) => a.mastery - b.mastery);
+}
+
+/**
+ * 严格校验模型返回的建议，把"结构对不对"从模型手里拿回代码：
+ * - 逐条丢弃不合格项（编造的 nodeId、档位越界或非整数、理由不是字符串）
+ * - 同一节点重复出现时保留**最低**档位（宁可低估掌握度）
+ * - 顶层结构不可用则返回 null，由调用方降级为规则建议
+ */
+export function validateAdvice(
+  raw: unknown,
+  candidates: { id: string; title: string }[],
+): AiAdvice | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const obj = raw as Record<string, unknown>;
+  if (typeof obj.summary !== "string" || !Array.isArray(obj.items)) return null;
+
+  const titleById = new Map(candidates.map((c) => [c.id, c.title]));
+  const kept = new Map<string, AiAdviceItem>();
+
+  for (const entry of obj.items) {
+    if (!entry || typeof entry !== "object") continue;
+    const it = entry as Record<string, unknown>;
+    const nodeId = typeof it.nodeId === "string" ? it.nodeId : "";
+    const title = titleById.get(nodeId);
+    if (title === undefined) continue;
+    const level = it.mastery;
+    if (!Number.isInteger(level)) continue;
+    const mastery = level as number;
+    if (mastery < 0 || mastery >= MASTERY_LEVELS.length) continue;
+
+    const reason = typeof it.reason === "string" ? it.reason.trim() : "";
+    const prev = kept.get(nodeId);
+    if (!prev || mastery < prev.mastery) {
+      kept.set(nodeId, { nodeId, title, mastery, reason });
+    }
+  }
+
+  return {
+    summary: obj.summary.trim(),
+    items: rankAdvice([...kept.values()]).slice(0, MAX_ADVICE_ITEMS),
+  };
+}
+
+export const AI_SYSTEM_PROMPT = `你是一名学习建议助手，面向大学生/理工科/医学生。你的任务不是写劝学文章，而是给每个待推进节点打一个掌握档位，让程序据此排出"先学哪一节"的顺序。严格只输出 JSON，不要输出任何其他文字或代码块标记。
 
 JSON 结构（所有字段都必须出现）：
 {
   "summary": "一句话汇总当前学习路径的推进状况",
-  "weakPoints": [
-    { "title": "节点名称", "summary": "当前状态或为什么优先推进它", "method": "针对性的学习方法与具体步骤" }
+  "items": [
+    { "nodeId": "必须是下面给出的节点 id，原样照抄", "mastery": 0, "reason": "为什么是这个档位，一句话" }
   ]
 }
 
-要求：weakPoints 不超过 5 条；全部用中文；必须结合下面给出的真实节点数据，不要编造不存在的节点；若无数据则 weakPoints 留空数组，summary 说明"暂无待推进节点"。`;
+mastery 是 0-4 的整数，含义：
+0 = 未开始（没碰过）
+1 = 听说过（看过但说不清）
+2 = 能复述（能背出要点）
+3 = 能应用（能做对题）
+4 = 能讲清（能给别人讲明白）
+
+要求：items 不超过 8 条；nodeId 必须来自下面给出的节点，不要编造；mastery 必须是 0-4 的整数；全部用中文；若无待推进节点则 items 留空数组。`;
 
 /** 从模型返回文本中提取 JSON（兼容纯 JSON、markdown 代码块、前后杂文本） */
 export function extractJson(text: string): unknown | null {
@@ -61,49 +134,24 @@ export function extractJson(text: string): unknown | null {
   return null;
 }
 
-function toWeakPoints(v: unknown): AiWeakPoint[] {
-  if (!Array.isArray(v)) return [];
-  return v
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const it = item as Record<string, unknown>;
-      return {
-        title: typeof it.title === "string" ? it.title : "",
-        summary: typeof it.summary === "string" ? it.summary : "",
-        method: typeof it.method === "string" ? it.method : "",
-      };
-    })
-    .filter((x): x is AiWeakPoint => x !== null && x.title !== "");
-}
-
-export function parseAiRecommendation(
-  text: string,
-): AiRecommendation | null {
-  const json = extractJson(text);
-  if (!json || typeof json !== "object" || Array.isArray(json)) return null;
-  const obj = json as Record<string, unknown>;
-
-  return {
-    summary: typeof obj.summary === "string" ? obj.summary : "",
-    weakPoints: toWeakPoints(obj.weakPoints),
-  };
-}
-
-/** 无 API 密钥时的规则建议（本地可测试） */
+/** 无 API 密钥 / 调用失败时的规则建议（本地可测试，同样输出排序后的 items） */
 export function buildRuleRecommendation(input: {
   nodes: AiFocusNode[];
-}): AiRecommendation {
+}): AiAdvice {
   return {
     summary:
-      "未配置 AI 密钥，以下为基于本地学习数据、建议优先推进的节点清单。",
-    weakPoints: input.nodes.slice(0, 5).map((n) => ({
-      title: n.title,
-      summary: `${n.subjectName} · ${NODE_STATUS_LABELS[n.status]}${
-        n.note.trim() ? "" : " · 尚无笔记"
-      }`,
-      method:
-        "建议先通读本节内容，用自己的话写下要点笔记，再用典型题检验掌握程度。",
-    })),
+      "未配置 AI 密钥或调用失败，以下为基于本地学习数据排出的推进顺序。",
+    items: rankAdvice(
+      input.nodes.slice(0, MAX_ADVICE_ITEMS).map((n) => ({
+        nodeId: n.id,
+        title: n.title,
+        // 规则视角：没笔记的算"未开始"，有笔记的算"听说过"
+        mastery: n.note.trim() ? 1 : 0,
+        reason: `${n.subjectName} · ${NODE_STATUS_LABELS[n.status]}${
+          n.note.trim() ? "" : " · 尚无笔记"
+        }`,
+      })),
+    ),
   };
 }
 
@@ -142,9 +190,9 @@ export function buildPrompt(input: {
   const lines = input.nodes.length
     ? input.nodes.map(
         (n) =>
-          `- ${n.title}（${n.subjectName} · ${NODE_STATUS_LABELS[n.status]}${
-            n.note.trim() ? ` · 笔记：${n.note.slice(0, 80)}` : " · 尚无笔记"
-          }）`,
+          `- [${n.id}] ${n.title}（${n.subjectName} · ${
+            NODE_STATUS_LABELS[n.status]
+          }${n.note.trim() ? ` · 笔记：${n.note.slice(0, 80)}` : " · 尚无笔记"}）`,
       )
     : ["- （暂无待推进节点）"];
 

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { apiFetch } from "@/lib/api";
-import type { AiRecommendation } from "@/lib/ai";
+import { masteryLabel, type AiAdvice } from "@/lib/ai";
 
 interface MaterialInfo {
   images: number;
@@ -18,7 +18,7 @@ interface MaterialInfo {
 
 interface AiResponse {
   source: "ai" | "rule";
-  recommendation: AiRecommendation;
+  advice: AiAdvice;
   material?: MaterialInfo;
   cached?: boolean;
 }
@@ -71,10 +71,8 @@ export function AiRecommendPanel({ subjectId }: { subjectId?: string }) {
               {data.source === "ai" ? "AI 生成" : "规则推荐"}
             </Badge>
             {data.cached && <Badge tone="slate">命中缓存</Badge>}
-            {data.recommendation.summary && (
-              <p className="text-sm text-slate-600">
-                {data.recommendation.summary}
-              </p>
+            {data.advice.summary && (
+              <p className="text-sm text-slate-600">{data.advice.summary}</p>
             )}
           </div>
 
@@ -89,32 +87,28 @@ export function AiRecommendPanel({ subjectId }: { subjectId?: string }) {
             </p>
           )}
 
-          {data.recommendation.weakPoints.length === 0 ? (
+          {data.advice.items.length === 0 ? (
             <Card className="p-6 text-center text-sm text-slate-400">
               当前没有待推进的节点
             </Card>
           ) : (
             <div className="space-y-3">
-              {data.recommendation.weakPoints.map((w, i) => (
-                <Card key={i} className="p-4">
+              <p className="text-xs text-slate-400">
+                按掌握程度排序，最该先学的排在最前面
+              </p>
+              {data.advice.items.map((item, i) => (
+                <Card key={item.nodeId} className="p-4">
                   <div className="flex items-center gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-medium text-blue-600">
                       {i + 1}
                     </span>
-                    <h3 className="font-medium text-slate-800">{w.title}</h3>
+                    <h3 className="font-medium text-slate-800">{item.title}</h3>
+                    <Badge tone={item.mastery <= 1 ? "amber" : "slate"}>
+                      {masteryLabel(item.mastery)}
+                    </Badge>
                   </div>
-                  {w.summary && (
-                    <p className="mt-2 text-sm text-slate-500">{w.summary}</p>
-                  )}
-                  {w.method && (
-                    <div className="mt-2 rounded-lg bg-slate-50 p-3">
-                      <p className="text-xs font-medium text-slate-400">
-                        学习方法
-                      </p>
-                      <p className="mt-1 text-sm leading-relaxed text-slate-700">
-                        {w.method}
-                      </p>
-                    </div>
+                  {item.reason && (
+                    <p className="mt-2 text-sm text-slate-500">{item.reason}</p>
                   )}
                 </Card>
               ))}

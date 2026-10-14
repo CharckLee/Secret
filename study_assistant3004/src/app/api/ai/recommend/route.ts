@@ -6,10 +6,11 @@ import {
   buildPrompt,
   buildRuleRecommendation,
   callDeepSeek,
-  parseAiRecommendation,
+  extractJson,
   selectUsableImages,
+  validateAdvice,
+  type AiAdvice,
   type AiFocusNode,
-  type AiRecommendation,
   type CheckInSample,
   type DeepSeekImage,
   type ReviewSample,
@@ -30,7 +31,7 @@ interface MaterialInfo {
 
 interface CachedResult {
   source: "ai" | "rule";
-  recommendation: AiRecommendation;
+  advice: AiAdvice;
   material: MaterialInfo;
 }
 
@@ -54,6 +55,7 @@ export async function GET(request: Request) {
       prisma.pathNode.findMany({
         where: { ...nodeScope, OR: [{ status: "LEARNING" }, { note: "" }] },
         select: {
+          id: true,
           title: true,
           status: true,
           note: true,
@@ -109,6 +111,7 @@ export async function GET(request: Request) {
     ]);
 
   const focusNodes: AiFocusNode[] = focusRaw.map((n) => ({
+    id: n.id,
     title: n.title,
     subjectName: n.subject.name,
     status: n.status,
@@ -177,7 +180,7 @@ export async function GET(request: Request) {
 
   const hasKey = Boolean(process.env.DEEPSEEK_API_KEY);
   let source: "ai" | "rule" = hasKey ? "ai" : "rule";
-  let recommendation = buildRuleRecommendation({ nodes: focusNodes });
+  let advice = buildRuleRecommendation({ nodes: focusNodes });
 
   if (hasKey) {
     try {
@@ -192,11 +195,15 @@ export async function GET(request: Request) {
         }),
         images,
       );
-      const parsed = parseAiRecommendation(text);
-      if (parsed) {
-        recommendation = parsed;
+      // 校验交给代码：档位越界或编造的 nodeId 一律丢弃；整体不合格就降级
+      const validated = validateAdvice(
+        extractJson(text),
+        focusNodes.map((n) => ({ id: n.id, title: n.title })),
+      );
+      if (validated) {
+        advice = validated;
       } else {
-        console.error("[ai/recommend] AI 返回无法解析为 JSON，降级为规则推荐");
+        console.error("[ai/recommend] 模型返回未通过校验，降级为规则建议");
         source = "rule";
       }
     } catch (e) {
@@ -205,7 +212,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const result: CachedResult = { source, recommendation, material };
+  const result: CachedResult = { source, advice, material };
   cache.set(cacheKey, result);
   if (cache.size > CACHE_LIMIT) {
     const oldest = cache.keys().next().value;

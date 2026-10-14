@@ -3,8 +3,11 @@ import {
   buildPrompt,
   buildRuleRecommendation,
   extractJson,
-  parseAiRecommendation,
+  masteryLabel,
+  MAX_ADVICE_ITEMS,
+  rankAdvice,
   selectUsableImages,
+  validateAdvice,
 } from "./ai";
 
 describe("extractJson", () => {
@@ -25,54 +28,12 @@ describe("extractJson", () => {
   });
 });
 
-describe("parseAiRecommendation", () => {
-  it("parses weak points structure", () => {
-    const r = parseAiRecommendation(
-      JSON.stringify({
-        summary: "整体薄弱点集中在积分",
-        weakPoints: [
-          { title: "定积分", summary: "计算不熟练", method: "多做题" },
-          { title: "级数", summary: "概念模糊" },
-        ],
-      }),
-    );
-    expect(r?.summary).toBe("整体薄弱点集中在积分");
-    expect(r?.weakPoints).toHaveLength(2);
-    expect(r?.weakPoints[0]).toEqual({
-      title: "定积分",
-      summary: "计算不熟练",
-      method: "多做题",
-    });
-    expect(r?.weakPoints[1].method).toBe("");
-  });
-
-  it("defaults missing fields", () => {
-    const r = parseAiRecommendation(JSON.stringify({}));
-    expect(r?.summary).toBe("");
-    expect(r?.weakPoints).toEqual([]);
-  });
-
-  it("returns null for non-object json", () => {
-    expect(parseAiRecommendation("[1,2,3]")).toBeNull();
-  });
-
-  it("filters weak points without title", () => {
-    const r = parseAiRecommendation(
-      JSON.stringify({
-        summary: "s",
-        weakPoints: [{ title: "有效", summary: "a" }, { summary: "无标题" }],
-      }),
-    );
-    expect(r?.weakPoints).toHaveLength(1);
-    expect(r?.weakPoints[0].title).toBe("有效");
-  });
-});
-
 describe("buildRuleRecommendation", () => {
-  it("maps focus nodes to suggestions", () => {
+  it("maps focus nodes to ranked items", () => {
     const r = buildRuleRecommendation({
       nodes: [
         {
+          id: "n1",
           title: "中值定理",
           subjectName: "高等数学",
           status: "LEARNING",
@@ -80,16 +41,42 @@ describe("buildRuleRecommendation", () => {
         },
       ],
     });
-    expect(r.weakPoints).toHaveLength(1);
-    expect(r.weakPoints[0].title).toBe("中值定理");
-    expect(r.weakPoints[0].summary).toContain("高等数学");
-    expect(r.weakPoints[0].summary).toContain("学习中");
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0].nodeId).toBe("n1");
+    expect(r.items[0].title).toBe("中值定理");
+    expect(r.items[0].reason).toContain("高等数学");
+    expect(r.items[0].reason).toContain("学习中");
+  });
+
+  it("puts a node without notes ahead of one that has notes", () => {
+    const r = buildRuleRecommendation({
+      nodes: [
+        {
+          id: "a",
+          title: "有笔记",
+          subjectName: "S",
+          status: "NOT_STARTED",
+          note: "写了点什么",
+        },
+        {
+          id: "b",
+          title: "无笔记",
+          subjectName: "S",
+          status: "NOT_STARTED",
+          note: "",
+        },
+      ],
+    });
+    expect(r.items[0].nodeId).toBe("b");
+    expect(r.items[0].mastery).toBe(0);
+    expect(r.items[1].mastery).toBe(1);
   });
 
   it("marks nodes that have no note yet", () => {
     const r = buildRuleRecommendation({
       nodes: [
         {
+          id: "n1",
           title: "微管",
           subjectName: "细胞生物学",
           status: "NOT_STARTED",
@@ -97,13 +84,14 @@ describe("buildRuleRecommendation", () => {
         },
       ],
     });
-    expect(r.weakPoints[0].summary).toContain("尚无笔记");
+    expect(r.items[0].reason).toContain("尚无笔记");
   });
 
   it("omits the no-note hint when a note exists", () => {
     const r = buildRuleRecommendation({
       nodes: [
         {
+          id: "n1",
           title: "微管",
           subjectName: "细胞生物学",
           status: "NOT_STARTED",
@@ -111,21 +99,24 @@ describe("buildRuleRecommendation", () => {
         },
       ],
     });
-    expect(r.weakPoints[0].summary).not.toContain("尚无笔记");
+    expect(r.items[0].reason).not.toContain("尚无笔记");
   });
 
-  it("caps the list at 5 items", () => {
-    const nodes = Array.from({ length: 8 }, (_, i) => ({
+  it("caps the list at the shared maximum", () => {
+    const nodes = Array.from({ length: 20 }, (_, i) => ({
+      id: `n${i}`,
       title: `节点${i}`,
       subjectName: "测试",
       status: "NOT_STARTED" as const,
       note: "",
     }));
-    expect(buildRuleRecommendation({ nodes }).weakPoints).toHaveLength(5);
+    expect(buildRuleRecommendation({ nodes }).items).toHaveLength(
+      MAX_ADVICE_ITEMS,
+    );
   });
 
-  it("returns empty list when there is nothing to push", () => {
-    expect(buildRuleRecommendation({ nodes: [] }).weakPoints).toEqual([]);
+  it("returns an empty list when there is nothing to push", () => {
+    expect(buildRuleRecommendation({ nodes: [] }).items).toEqual([]);
   });
 });
 
@@ -177,6 +168,7 @@ describe("buildPrompt", () => {
     const p = buildPrompt({
       nodes: [
         {
+          id: "n1",
           title: "微管",
           subjectName: "细胞生物学",
           status: "LEARNING",
@@ -252,7 +244,13 @@ describe("buildPrompt", () => {
     const p = buildPrompt({
       subjectName: "人体结构与功能",
       nodes: [
-        { title: "微管", subjectName: "人体结构与功能", status: "NOT_STARTED", note: "" },
+        {
+          id: "n1",
+          title: "微管",
+          subjectName: "人体结构与功能",
+          status: "NOT_STARTED",
+          note: "",
+        },
       ],
       noteSamples: [{ title: "线粒体", note: "能量工厂" }],
       imageNames: ["a.jpg"],
@@ -266,5 +264,146 @@ describe("buildPrompt", () => {
     for (const kw of ["人体结构与功能", "微管", "能量工厂", "a.jpg", "打卡", "复盘"]) {
       expect(p).toContain(kw);
     }
+  });
+});
+
+describe("masteryLabel", () => {
+  it("labels each level", () => {
+    expect(masteryLabel(0)).toBe("未开始");
+    expect(masteryLabel(2)).toBe("能复述");
+    expect(masteryLabel(4)).toBe("能讲清");
+  });
+
+  it("returns a safe label for out-of-range values", () => {
+    expect(masteryLabel(-1)).toBe("未知");
+    expect(masteryLabel(5)).toBe("未知");
+    expect(masteryLabel(Number.NaN)).toBe("未知");
+  });
+});
+
+describe("rankAdvice", () => {
+  const item = (nodeId: string, mastery: number) => ({
+    nodeId,
+    title: nodeId,
+    mastery,
+    reason: "",
+  });
+
+  it("puts the weakest node first", () => {
+    const r = rankAdvice([item("a", 3), item("b", 0), item("c", 2)]);
+    expect(r.map((i) => i.nodeId)).toEqual(["b", "c", "a"]);
+  });
+
+  it("keeps the original order when mastery ties", () => {
+    const r = rankAdvice([item("a", 1), item("b", 1), item("c", 1)]);
+    expect(r.map((i) => i.nodeId)).toEqual(["a", "b", "c"]);
+  });
+
+  it("does not mutate the input array", () => {
+    const input = [item("a", 4), item("b", 0)];
+    rankAdvice(input);
+    expect(input.map((i) => i.nodeId)).toEqual(["a", "b"]);
+  });
+});
+
+describe("validateAdvice", () => {
+  const candidates = [
+    { id: "n1", title: "微管" },
+    { id: "n2", title: "线粒体" },
+  ];
+
+  it("accepts a well-formed payload and attaches the real title", () => {
+    const r = validateAdvice(
+      {
+        summary: "先补细胞结构",
+        items: [{ nodeId: "n1", mastery: 1, reason: "笔记很短" }],
+      },
+      candidates,
+    );
+    expect(r?.summary).toBe("先补细胞结构");
+    expect(r?.items).toHaveLength(1);
+    expect(r?.items[0].title).toBe("微管");
+  });
+
+  it("drops items with unknown node ids", () => {
+    const r = validateAdvice(
+      { summary: "", items: [{ nodeId: "ghost", mastery: 1, reason: "" }] },
+      candidates,
+    );
+    expect(r?.items).toEqual([]);
+  });
+
+  it("drops out-of-range or non-integer mastery", () => {
+    const r = validateAdvice(
+      {
+        summary: "",
+        items: [
+          { nodeId: "n1", mastery: 9, reason: "" },
+          { nodeId: "n2", mastery: 1.5, reason: "" },
+        ],
+      },
+      candidates,
+    );
+    expect(r?.items).toEqual([]);
+  });
+
+  it("keeps the good items when only some are bad", () => {
+    const r = validateAdvice(
+      {
+        summary: "",
+        items: [
+          { nodeId: "n1", mastery: 2, reason: "ok" },
+          { nodeId: "ghost", mastery: 2, reason: "bad" },
+          { nodeId: "n2", mastery: 99, reason: "bad" },
+        ],
+      },
+      candidates,
+    );
+    expect(r?.items.map((i) => i.nodeId)).toEqual(["n1"]);
+  });
+
+  it("returns null for unusable payloads", () => {
+    expect(validateAdvice(null, candidates)).toBeNull();
+    expect(validateAdvice("nope", candidates)).toBeNull();
+    expect(validateAdvice({}, candidates)).toBeNull();
+    expect(validateAdvice({ summary: 1, items: [] }, candidates)).toBeNull();
+    expect(validateAdvice({ summary: "x" }, candidates)).toBeNull();
+  });
+
+  it("dedupes repeated nodes, keeping the weakest reading", () => {
+    const r = validateAdvice(
+      {
+        summary: "",
+        items: [
+          { nodeId: "n1", mastery: 3, reason: "偏乐观" },
+          { nodeId: "n1", mastery: 0, reason: "更保守" },
+        ],
+      },
+      candidates,
+    );
+    expect(r?.items).toHaveLength(1);
+    expect(r?.items[0].mastery).toBe(0);
+    expect(r?.items[0].reason).toBe("更保守");
+  });
+
+  it("caps how many items are kept", () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({
+      id: `x${i}`,
+      title: `T${i}`,
+    }));
+    const r = validateAdvice(
+      {
+        summary: "",
+        items: many.map((m) => ({ nodeId: m.id, mastery: 1, reason: "" })),
+      },
+      many,
+    );
+    expect(r!.items.length).toBeLessThanOrEqual(8);
+  });
+
+  it("trims a blank summary but keeps the payload", () => {
+    const r = validateAdvice({ summary: "   ", items: [] }, candidates);
+    expect(r).not.toBeNull();
+    expect(r?.summary).toBe("");
   });
 });
