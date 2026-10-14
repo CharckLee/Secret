@@ -34,10 +34,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const formData = await request.formData();
-  const file = formData.get("file");
-  const subjectId = formData.get("subjectId");
 
-  if (!(file instanceof File)) {
+  // 支持一次传多个：优先读 `files`（复数），同时兼容旧的单文件 `file`
+  const incoming: File[] = [];
+  for (const entry of formData.getAll("files")) {
+    if (entry instanceof File) incoming.push(entry);
+  }
+  const single = formData.get("file");
+  if (single instanceof File) incoming.unshift(single);
+
+  if (incoming.length === 0) {
     return Response.json({ error: "请选择要上传的文件" }, { status: 400 });
   }
 
@@ -49,6 +55,7 @@ export async function POST(request: Request) {
       : [];
 
   // 学科：优先用传入值；只绑定了节点时才从节点推导
+  const subjectId = formData.get("subjectId");
   let resolvedSubjectId =
     typeof subjectId === "string" && subjectId ? subjectId : "";
   if (!resolvedSubjectId && pathNodeIds.length > 0) {
@@ -75,24 +82,30 @@ export async function POST(request: Request) {
       ? "COMPLETED"
       : "NOT_STARTED";
 
-  const id = crypto.randomUUID();
-  const safeName = file.name.replace(/[^\w.\-\u4e00-\u9fa5]/g, "_");
   await mkdir(UPLOAD_DIR, { recursive: true });
-  const storedPath = path.join(UPLOAD_DIR, `${id}_${safeName}`);
-  await writeFile(storedPath, Buffer.from(await file.arrayBuffer()));
 
-  const record = await prisma.studyFile.create({
-    data: {
-      id,
-      filename: file.name,
-      storedPath,
-      mimeType: file.type || "application/octet-stream",
-      size: file.size,
-      status: initialStatus,
-      subjectId: resolvedSubjectId,
-      pathNodes: { connect: pathNodeIds.map((nid) => ({ id: nid })) },
-    },
-  });
+  const created = [];
+  for (const file of incoming) {
+    const id = crypto.randomUUID();
+    const safeName = file.name.replace(/[^\w.\-\u4e00-\u9fa5]/g, "_");
+    const storedPath = path.join(UPLOAD_DIR, `${id}_${safeName}`);
+    await writeFile(storedPath, Buffer.from(await file.arrayBuffer()));
 
-  return Response.json(record, { status: 201 });
+    created.push(
+      await prisma.studyFile.create({
+        data: {
+          id,
+          filename: file.name,
+          storedPath,
+          mimeType: file.type || "application/octet-stream",
+          size: file.size,
+          status: initialStatus,
+          subjectId: resolvedSubjectId,
+          pathNodes: { connect: pathNodeIds.map((nid) => ({ id: nid })) },
+        },
+      }),
+    );
+  }
+
+  return Response.json({ count: created.length, files: created }, { status: 201 });
 }
