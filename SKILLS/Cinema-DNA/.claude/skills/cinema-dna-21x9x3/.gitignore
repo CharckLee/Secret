@@ -1,0 +1,10 @@
+﻿.DS_Store
+Thumbs.db
+*.tmp
+*.log
+node_modules/
+.env
+.env.*
+
+# 88MB 示意图，可从 github.com/yub369302-cyber/cinema-dna-21x9x3 重新获取，不入 git 历史
+examples/
