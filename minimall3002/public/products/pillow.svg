@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a29bfe"/>
+      <stop offset="100%" stop-color="#6c5ce7"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="24" fill="url(#bg)"/>
+  <!-- 枕头主体 -->
+  <path d="M80 180 Q80 100 200 120 Q320 100 320 180 Q330 240 200 260 Q70 240 80 180 Z" fill="#fff" opacity="0.95"/>
+  <!-- 枕头中间缝线 -->
+  <path d="M120 180 Q200 200 280 180" fill="none" stroke="#dfe6e9" stroke-width="2" stroke-dasharray="8 4"/>
+  <!-- 枕头曲面阴影 -->
+  <path d="M80 180 Q80 100 200 120 Q200 260 80 180" fill="#a29bfe" opacity="0.15"/>
+  <!-- 记忆棉纹理点 -->
+  <g fill="#a29bfe" opacity="0.3">
+    <circle cx="150" cy="170" r="3"/>
+    <circle cx="180" cy="160" r="2.5"/>
+    <circle cx="210" cy="165" r="3"/>
+    <circle cx="240" cy="175" r="2"/>
+    <circle cx="170" cy="185" r="2.5"/>
+    <circle cx="200" cy="190" r="3"/>
+    <circle cx="230" cy="195" r="2"/>
+    <circle cx="160" cy="200" r="2"/>
+    <circle cx="190" cy="210" r="2.5"/>
+  </g>
+  <!-- ZZZ -->
+  <text x="290" y="130" font-size="22" fill="#fff" opacity="0.7" font-family="sans-serif">Z</text>
+  <text x="315" y="105" font-size="18" fill="#fff" opacity="0.5" font-family="sans-serif">Z</text>
+  <text x="335" y="85" font-size="14" fill="#fff" opacity="0.3" font-family="sans-serif">Z</text>
+</svg>

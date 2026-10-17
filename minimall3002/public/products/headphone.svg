@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#667eea"/>
+      <stop offset="100%" stop-color="#764ba2"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="24" fill="url(#bg)"/>
+  <!-- 耳机头梁 -->
+  <path d="M100 170 Q200 60 300 170" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <!-- 左耳罩 -->
+  <ellipse cx="130" cy="230" rx="45" ry="55" fill="#fff" opacity="0.95"/>
+  <ellipse cx="130" cy="230" rx="28" ry="35" fill="#764ba2" opacity="0.5"/>
+  <!-- 右耳罩 -->
+  <ellipse cx="270" cy="230" rx="45" ry="55" fill="#fff" opacity="0.95"/>
+  <ellipse cx="270" cy="230" rx="28" ry="35" fill="#764ba2" opacity="0.5"/>
+  <!-- 耳罩海绵纹理 -->
+  <circle cx="130" cy="215" r="3" fill="#ddd"/>
+  <circle cx="120" cy="240" r="3" fill="#ddd"/>
+  <circle cx="140" cy="245" r="3" fill="#ddd"/>
+  <circle cx="270" cy="215" r="3" fill="#ddd"/>
+  <circle cx="260" cy="240" r="3" fill="#ddd"/>
+  <circle cx="280" cy="245" r="3" fill="#ddd"/>
+  <!-- ✨闪光 -->
+  <text x="310" y="100" font-size="28">✨</text>
+  <text x="55" y="120" font-size="20">🎵</text>
+</svg>

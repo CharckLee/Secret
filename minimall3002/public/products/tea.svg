@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#55efc4"/>
+      <stop offset="100%" stop-color="#00b894"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="24" fill="url(#bg)"/>
+  <!-- 茶杯 -->
+  <path d="M140 240 L150 120 L250 120 L260 240 Q260 270 200 270 Q140 270 140 240 Z" fill="#fff" opacity="0.9"/>
+  <!-- 茶水 -->
+  <path d="M145 200 Q200 190 255 200 L250 240 Q200 250 150 240 Z" fill="#00b894" opacity="0.3"/>
+  <!-- 杯柄 -->
+  <path d="M260 150 Q300 155 295 190 Q290 215 255 210" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity="0.9"/>
+  <!-- 茶叶 -->
+  <ellipse cx="180" cy="215" rx="6" ry="3" fill="#55efc4" transform="rotate(20 180 215)"/>
+  <ellipse cx="210" cy="220" rx="5" ry="2.5" fill="#00b894" transform="rotate(-15 210 220)"/>
+  <!-- 蒸汽 -->
+  <g stroke="#fff" stroke-width="2" opacity="0.5" stroke-linecap="round">
+    <path d="M180 110 Q175 95 185 80" fill="none"/>
+    <path d="M200 105 Q205 90 195 75" fill="none"/>
+    <path d="M220 110 Q225 95 215 80" fill="none"/>
+  </g>
+  <!-- 盘子 -->
+  <ellipse cx="200" cy="270" rx="80" ry="10" fill="#fff" opacity="0.6"/>
+  <!-- 🍃 -->
+  <text x="330" y="130" font-size="24">🍃</text>
+</svg>

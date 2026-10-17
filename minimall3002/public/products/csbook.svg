@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#636e72"/>
+      <stop offset="100%" stop-color="#2d3436"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="24" fill="url(#bg)"/>
+  <!-- 厚书 -->
+  <rect x="100" y="90" width="200" height="240" rx="8" fill="#e74c3c"/>
+  <!-- 书脊 -->
+  <rect x="90" y="90" width="20" height="240" rx="3" fill="#c0392b"/>
+  <!-- 封面内框 -->
+  <rect x="120" y="110" width="160" height="200" rx="4" fill="#fff" opacity="0.1"/>
+  <!-- CPU芯片图标 -->
+  <rect x="165" y="145" width="70" height="70" rx="6" fill="#2d3436"/>
+  <g fill="#636e72">
+    <rect x="180" y="155" width="40" height="4" rx="2"/>
+    <rect x="180" y="165" width="40" height="4" rx="2"/>
+    <rect x="180" y="175" width="40" height="4" rx="2"/>
+    <rect x="180" y="185" width="40" height="4" rx="2"/>
+    <rect x="180" y="195" width="40" height="4" rx="2"/>
+  </g>
+  <!-- 引脚 -->
+  <g fill="#bdc3c7">
+    <rect x="165" y="142" width="6" height="8"/>
+    <rect x="185" y="142" width="6" height="8"/>
+    <rect x="205" y="142" width="6" height="8"/>
+    <rect x="229" y="142" width="6" height="8"/>
+    <rect x="165" y="210" width="6" height="8"/>
+    <rect x="185" y="210" width="6" height="8"/>
+    <rect x="205" y="210" width="6" height="8"/>
+    <rect x="229" y="210" width="6" height="8"/>
+  </g>
+  <!-- 标题 -->
+  <rect x="140" y="250" width="120" height="6" rx="3" fill="#fff" opacity="0.5"/>
+  <rect x="150" y="265" width="100" height="6" rx="3" fill="#fff" opacity="0.3"/>
+  <!-- 🔬 -->
+  <text x="320" y="100" font-size="30">🔬</text>
+</svg>

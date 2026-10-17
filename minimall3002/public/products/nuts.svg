@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fdcb6e"/>
+      <stop offset="100%" stop-color="#e17055"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="24" fill="url(#bg)"/>
+  <!-- 礼盒底座 -->
+  <rect x="90" y="200" width="220" height="120" rx="12" fill="#d35400" opacity="0.6"/>
+  <!-- 礼盒盖子 -->
+  <rect x="85" y="165" width="230" height="45" rx="10" fill="#e67e22"/>
+  <!-- 蝴蝶结 -->
+  <circle cx="200" cy="175" r="15" fill="#fff"/>
+  <path d="M200 175 Q180 150 165 165 Q185 170 200 175" fill="#fff"/>
+  <path d="M200 175 Q220 150 235 165 Q215 170 200 175" fill="#fff"/>
+  <!-- 坚果散落 -->
+  <ellipse cx="130" cy="140" rx="14" ry="10" fill="#8B4513" transform="rotate(30 130 140)"/>
+  <ellipse cx="270" cy="135" rx="13" ry="9" fill="#A0522D" transform="rotate(-20 270 135)"/>
+  <circle cx="310" cy="150" r="11" fill="#D2691E"/>
+  <ellipse cx="150" cy="125" rx="10" ry="8" fill="#DEB887" transform="rotate(-15 150 125)"/>
+  <circle cx="250" cy="120" r="9" fill="#8B4513"/>
+  <!-- 坚果纹理 -->
+  <g stroke="#5D2906" stroke-width="1" opacity="0.4">
+    <path d="M125 138 Q130 136 135 138" fill="none"/>
+    <path d="M265 133 Q270 131 275 133" fill="none"/>
+  </g>
+</svg>

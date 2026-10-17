@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a29bfe"/>
+      <stop offset="100%" stop-color="#6c5ce7"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="24" fill="url(#bg)"/>
+  <!-- 书 -->
+  <rect x="105" y="100" width="190" height="225" rx="6" fill="#2c3e50"/>
+  <!-- GOF经典字体 -->
+  <text x="200" y="165" text-anchor="middle" font-size="44" fill="#a29bfe" font-family="serif" font-weight="bold">GoF</text>
+  <!-- 设计图案 -->
+  <g fill="none" stroke="#6c5ce7" stroke-width="2" opacity="0.6">
+    <rect x="150" y="185" width="30" height="30" rx="4"/>
+    <circle cx="185" cy="200" r="15"/>
+    <rect x="215" y="185" width="30" height="30" rx="4"/>
+  </g>
+  <!-- 箭头连接 -->
+  <path d="M180 200 L205 200" stroke="#6c5ce7" stroke-width="2" stroke-dasharray="4 2"/>
+  <text x="200" y="335" text-anchor="middle" font-size="12" fill="#a29bfe" opacity="0.7" font-family="sans-serif">23种设计模式</text>
+  <!-- 📐 -->
+  <text x="320" y="110" font-size="28">📐</text>
+</svg>

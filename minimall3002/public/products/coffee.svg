@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6d4c41"/>
+      <stop offset="100%" stop-color="#3e2723"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="24" fill="url(#bg)"/>
+  <!-- 袋子 -->
+  <path d="M130 150 L140 80 L260 80 L270 150 L250 320 L150 320 Z" fill="#8d6e63"/>
+  <!-- 袋子褶皱 -->
+  <path d="M170 150 Q180 240 165 310" fill="none" stroke="#795548" stroke-width="1.5" opacity="0.5"/>
+  <!-- 标签 -->
+  <rect x="220" y="160" width="55" height="35" rx="4" fill="#ffe0b2"/>
+  <text x="247" y="183" text-anchor="middle" font-size="9" fill="#6d4c41" font-family="sans-serif" font-weight="bold">COFFEE</text>
+  <!-- 咖啡豆(露出) -->
+  <ellipse cx="180" cy="120" rx="12" ry="16" fill="#4e342e" transform="rotate(-20 180 120)"/>
+  <ellipse cx="210" cy="115" rx="11" ry="15" fill="#5d4037" transform="rotate(15 210 115)"/>
+  <ellipse cx="195" cy="105" rx="10" ry="14" fill="#3e2723" transform="rotate(-5 195 105)"/>
+  <!-- 豆子中线 -->
+  <path d="M175 115 Q180 120 185 115" fill="none" stroke="#8d6e63" stroke-width="1"/>
+  <path d="M206 110 Q211 115 216 110" fill="none" stroke="#8d6e63" stroke-width="1"/>
+  <!-- ☕ -->
+  <text x="100" y="200" font-size="30">☕</text>
+</svg>
